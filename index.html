@@ -28,7 +28,7 @@
 <body class="bg-[#f8fafc] text-[#1e2937] min-h-screen pb-20">
   <div class="max-w-2xl mx-auto">
 
-    <!-- 標題（全新官方名稱） -->
+    <!-- 標題 -->
     <div class="bg-white border-b sticky top-0 z-50 px-6 py-5 flex justify-between items-center">
       <div>
         <h1 class="text-3xl font-bold text-emerald-700">2026 社區消費大獎賞</h1>
@@ -138,7 +138,7 @@
           </div>
           <div class="text-right space-y-3">
             <div>
-              <input id="estimatedDraws" type="number" value="800000" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
+              <input id="estimatedDraws" type="number" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
               <div class="text-[10px] opacity-75">預估全澳總抽獎筆數</div>
             </div>
             <div>
@@ -155,11 +155,15 @@
 
       <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-8 text-sm"></div>
 
-      <!-- 詳細交叉分析 -->
+      <!-- 詳細交叉分析（新增中獎金額表格） -->
       <div class="mt-12">
         <h3 class="font-semibold mb-4 text-slate-600">詳細交叉分析（進階參考）</h3>
         <div id="crossPaymentTable" class="bg-white rounded-3xl overflow-auto mb-8"></div>
-        <div id="crossPrizeTable" class="bg-white rounded-3xl overflow-auto"></div>
+        <div id="crossPrizeTable" class="bg-white rounded-3xl overflow-auto mb-8"></div>
+        
+        <!-- 新增：周 × 支付系統 中獎金額表格 -->
+        <h3 class="font-semibold mb-4 text-slate-600">周 × 支付系統 中獎總金額（元）</h3>
+        <div id="crossPaymentAmountTable" class="bg-white rounded-3xl overflow-auto"></div>
       </div>
     </div>
   </div>
@@ -248,17 +252,19 @@
     function suggestTotalDraws() {
       const sampleCount = crowdData.length;
       if (sampleCount === 0) return alert('目前還沒有樣本數據');
-      const suggested = Math.max(500000, Math.round(sampleCount * 800));
+      const suggested = Math.max(300000, Math.round(sampleCount * 600));
       document.getElementById('estimatedDraws').value = suggested;
       renderRemainingPool();
-      alert(`已根據目前樣本數建議全澳總抽獎筆數：${suggested.toLocaleString()} 筆（放大800倍）`);
+      alert(`已根據目前樣本數建議全澳總抽獎筆數：${suggested.toLocaleString()} 筆（放大600倍）`);
     }
 
     function renderRemainingPool() {
-      const estimatedDraws = parseInt(document.getElementById('estimatedDraws').value) || 800000;
+      const estimatedDraws = parseInt(document.getElementById('estimatedDraws').value) || 400000;
       const usageRate = parseFloat(document.getElementById('usageRate').value) || 88;
       const stats = calculatePoolStats(estimatedDraws, usageRate);
+
       document.getElementById('remainingAmount').textContent = `$${stats.remaining.toLocaleString()}`;
+
       document.getElementById('poolDetail').innerHTML = `
         <strong>官方推算方式（電子優惠券彩池）</strong><br>
         主辦單位：澳門經濟及科技發展局與澳門中華總商會<br>
@@ -267,7 +273,7 @@
         已核銷總額 = 已發放總值 × 使用率 R<br>
         已發放總值 = 樣本平均中獎金額 × 預估全澳總抽獎筆數<br><br>
         目前樣本平均：$${stats.avg}　•　已發放估計：$${stats.disbursed.toLocaleString()}<br>
-        <span class="opacity-75">※ 為何不能直接用目前樣本數？因為樣本僅為自願上傳的部分，全澳實際總量遠大於此。本預設值800,000筆為合理全澳估計。</span>
+        <span class="opacity-75">※ 這是全活動10週的總量預估值。活動初期建議使用較低數字，後期可調高。</span>
       `;
     }
 
@@ -482,6 +488,7 @@
         options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
       });
 
+      // 中獎率趨勢圖
       const weeklyData = {};
       dates.forEach(d => {
         const week = getWeekNumber(d);
@@ -531,6 +538,10 @@
         }
       });
 
+      // 動態設定預估筆數（優化後）
+      const sampleCount = crowdData.length;
+      const suggested = sampleCount > 0 ? Math.max(300000, Math.round(sampleCount * 600)) : 400000;
+      document.getElementById('estimatedDraws').value = suggested;
       renderRemainingPool();
 
       document.getElementById('upperLimits').innerHTML = `
@@ -546,6 +557,7 @@
         </div>
       `;
 
+      // 交叉表格 1: 周 × 支付系統 次數
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
@@ -565,6 +577,7 @@
       paymentHTML += `</tbody></table>`;
       document.getElementById('crossPaymentTable').innerHTML = paymentHTML;
 
+      // 交叉表格 2: 周 × 面額 次數
       let prizeHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       [0,10,20,50,100,200].forEach(p => prizeHTML += `<th class="text-xs">${p===0?'未中':p}元</th>`);
       prizeHTML += `</tr></thead><tbody>`;
@@ -583,6 +596,24 @@
       });
       prizeHTML += `</tbody></table>`;
       document.getElementById('crossPrizeTable').innerHTML = prizeHTML;
+
+      // 新增：周 × 支付系統 中獎總金額表格
+      let amountHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
+      payments.forEach(p => amountHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
+      amountHTML += `</tr></thead><tbody>`;
+      dates.forEach(d => {
+        const week = getWeekNumber(d);
+        const range = weekRanges[week] || '';
+        const weekData = crowdData.filter(r => getWeekNumber(r.date) === week);
+        amountHTML += `<tr><td class="font-medium text-left">${week}週<br><span class="text-xs text-slate-500">(${range})</span></td>`;
+        payments.forEach(pay => {
+          const totalAmount = weekData.filter(r => r.payment === pay).reduce((sum, r) => sum + (r.prize || 0), 0);
+          amountHTML += `<td class="font-semibold">$${totalAmount}</td>`;
+        });
+        amountHTML += `</tr>`;
+      });
+      amountHTML += `</tbody></table>`;
+      document.getElementById('crossPaymentAmountTable').innerHTML = amountHTML;
     }
 
     function switchTab(n) {
