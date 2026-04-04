@@ -25,23 +25,30 @@
       <p class="text-xs text-slate-500">2026 • 一站式記錄 + 全澳概率</p>
     </div>
 
-    <!-- 登入 Modal -->
-    <div id="loginModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
-      <div class="bg-white rounded-3xl p-8 max-w-sm w-full mx-4">
-        <h3 class="text-2xl font-semibold mb-6">澳門電話登入</h3>
-        <div id="phoneStep">
-          <label class="block text-sm text-slate-500 mb-2">電話號碼（+853）</label>
-          <input id="phoneInput" type="tel" placeholder="65341234" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg">
-          <button onclick="sendVerificationCode()" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white py-4 rounded-3xl text-lg font-medium">發送驗證碼</button>
-        </div>
-        <div id="codeStep" class="hidden">
-          <label class="block text-sm text-slate-500 mb-2">6位驗證碼</label>
-          <input id="codeInput" type="text" maxlength="6" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg text-center tracking-[0.5em]">
-          <button onclick="verifyCode()" class="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-3xl text-lg font-medium">確認登入</button>
-        </div>
-        <button onclick="closeModal()" class="mt-6 text-slate-400 hover:text-slate-600 block mx-auto">取消</button>
-      </div>
+  <!-- 登入 Modal（已優化：只需輸入8位） -->
+<div id="loginModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+  <div class="bg-white rounded-3xl p-8 max-w-sm w-full mx-4">
+    <h3 class="text-2xl font-semibold mb-6">澳門電話登入</h3>
+    
+    <div id="phoneStep">
+      <label class="block text-sm text-slate-500 mb-1">澳門電話號碼（8位數字）</label>
+      <input id="phoneInput" type="tel" maxlength="8" placeholder="65341234" 
+             class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg text-center font-mono">
+      <p class="text-xs text-slate-400 mt-2">系統會自動加上 +853 區號，無需手動輸入</p>
+      <button onclick="sendVerificationCode()" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white py-4 rounded-3xl text-lg font-medium">發送驗證碼</button>
     </div>
+    
+    <div id="codeStep" class="hidden">
+      <label class="block text-sm text-slate-500 mb-2">6位驗證碼</label>
+      <input id="codeInput" type="text" maxlength="6" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg text-center tracking-[0.5em]">
+      <button onclick="verifyCode()" class="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-3xl text-lg font-medium">確認登入</button>
+    </div>
+    
+    <div id="recaptcha-container" class="hidden"></div>
+    
+    <button onclick="closeModal()" class="mt-6 text-slate-400 hover:text-slate-600 block mx-auto">取消</button>
+  </div>
+</div>
 
     <!-- 底部導航 -->
     <div class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t flex z-50">
@@ -155,17 +162,35 @@
     }
 
     // ========== 雲端登入流程 ==========
-    async function sendVerificationCode() {
-      const phone = '+853' + document.getElementById('phoneInput').value.trim();
-      if (phone.length !== 12) return alert('請輸入完整澳門電話號碼');
-      verifier = new firebase.auth.RecaptchaVerifier('phoneStep', {size: 'invisible'});
-      try {
-        const confirmationResult = await auth.signInWithPhoneNumber(phone, verifier);
-        window.confirmationResult = confirmationResult;
-        document.getElementById('phoneStep').classList.add('hidden');
-        document.getElementById('codeStep').classList.remove('hidden');
-      } catch (e) { alert('發送失敗：' + e.message); }
-    }
+async function sendVerificationCode() {
+  const input = document.getElementById('phoneInput').value.trim();
+  
+  // 只允許8位數字
+  if (!/^\d{8}$/.test(input)) {
+    return alert('請輸入完整的8位澳門電話號碼（例如：65341234）');
+  }
+  
+  const phone = '+853' + input;
+  
+  // 先清理舊 reCAPTCHA
+  if (verifier) {
+    verifier.clear();
+    verifier = null;
+  }
+
+  verifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+    size: 'invisible'
+  });
+
+  try {
+    const confirmationResult = await auth.signInWithPhoneNumber(phone, verifier);
+    window.confirmationResult = confirmationResult;
+    document.getElementById('phoneStep').classList.add('hidden');
+    document.getElementById('codeStep').classList.remove('hidden');
+  } catch (e) {
+    alert('發送失敗：' + e.message + '\n\n請確認電話號碼正確，並檢查網路');
+  }
+}
 
     async function verifyCode() {
       const code = document.getElementById('codeInput').value;
