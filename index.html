@@ -63,9 +63,10 @@
       <h2 class="text-xl font-semibold mb-6">我的統計</h2>
       <div id="myStats" class="grid grid-cols-3 gap-4"></div>
       <canvas id="myChart" class="mt-8"></canvas>
+      <div id="weeklyWarning" class="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm"></div>
     </div>
 
-    <!-- Page 3: 全澳概率 -->
+    <!-- Page 3: 全澳概率（已大幅優化） -->
     <div id="page2" class="p-6 hidden">
       <h2 class="text-xl font-semibold mb-6">全澳概率統計</h2>
       <div id="totalSamples" class="bg-white rounded-3xl p-5 text-center mb-6 font-medium"></div>
@@ -97,7 +98,6 @@
     const prizes = [0,10,20,50,100,200];
 
     function init() {
-      // 初始化選單與面額按鈕
       const ds = document.getElementById('dateSelect');
       dates.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
       const ps = document.getElementById('paymentSelect');
@@ -130,7 +130,7 @@
       } catch (e) { alert('登入失敗：' + e.message); }
     }
 
-    // ================== 單一儲存按鈕（同時寫入兩個 collection） ==================
+    // ================== 單一按鈕：儲存並貢獻 ==================
     async function saveAndContribute() {
       if (!currentUser) return alert('請先登入 Google 帳戶');
 
@@ -141,14 +141,13 @@
 
       try {
         for (let prize of selected) {
-          // 1. 寫入個人記錄
+          // 個人記錄
           await db.collection('personalRecords').add({
             uid: currentUser.uid,
             date, payment, prize,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
-          
-          // 2. 同時寫入全澳眾包記錄
+          // 全澳眾包
           await db.collection('crowdRecords').add({
             date, payment, prize,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -180,19 +179,56 @@
         container.innerHTML = `<p class="col-span-3 text-center py-12 text-slate-400">還沒有記錄</p>`;
         return;
       }
-      // KPI + 圖表（完整）
+      const total = personalRecords.length;
+      const totalPrize = personalRecords.reduce((sum, r) => sum + r.prize, 0);
+      const winRate = ((personalRecords.filter(r => r.prize > 0).length / total) * 100).toFixed(1);
+
+      container.innerHTML = `
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-sky-600">${total}</div><div class="text-xs text-slate-500">總抽獎次數</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-emerald-600">$${totalPrize}</div><div class="text-xs text-slate-500">總中獎金額</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${winRate}%</div><div class="text-xs text-slate-500">整體中獎率</div></div>
+      `;
+
       new Chart(document.getElementById('myChart'), {
         type: 'bar',
         data: { labels: prizes, datasets: [{ label: '面額分佈', data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), backgroundColor: '#0ea5e9' }] }
       });
     }
 
+    // ================== 全澳概率（已大幅強化） ==================
     function renderCrowdProbability() {
       const sampleDiv = document.getElementById('totalSamples');
       const tableDiv = document.getElementById('probTable');
+
       if (crowdData.length === 0) return;
-      sampleDiv.textContent = `全澳總樣本數：${crowdData.length} 筆`;
-      // 表格 + 圖表（已完整）
+
+      const total = crowdData.length;
+      const totalPrize = crowdData.reduce((sum, r) => sum + (parseInt(r.prize) || 0), 0);
+      const winRate = ((crowdData.filter(r => parseInt(r.prize) > 0).length / total) * 100).toFixed(1);
+      const twoHundredRate = ((crowdData.filter(r => parseInt(r.prize) === 200).length / total) * 100).toFixed(2);
+      const avgPrize = (totalPrize / total).toFixed(1);
+
+      sampleDiv.innerHTML = `全澳總樣本數：${total} 筆<br>
+        <span class="text-emerald-600">整體中獎率 ${winRate}% • 期望值 $${avgPrize}元 • 200元大獎率 ${twoHundredRate}%</span>`;
+
+      let html = `<table class="w-full text-sm"><thead><tr class="bg-slate-100"><th class="p-3">週數</th><th class="p-3">總次數</th>`;
+      prizes.forEach(p => html += `<th class="p-3">${p}元 (%)</th>`);
+      html += `</tr></thead><tbody>`;
+
+      for (let w = 1; w <= 10; w++) {
+        const weekData = crowdData.filter(r => r.date && r.date.includes(`第${w}週`));
+        if (weekData.length === 0) continue;
+        const weekTotal = weekData.length;
+        let row = `<tr class="border-b"><td class="p-3 font-medium">第${w}週</td><td class="p-3 text-center">${weekTotal}</td>`;
+        prizes.forEach(p => {
+          const count = weekData.filter(r => parseInt(r.prize) === p).length;
+          const percent = (count / weekTotal * 100).toFixed(1);
+          row += `<td class="p-3 text-center">${count} <span class="text-xs text-slate-400">(${percent}%)</span></td>`;
+        });
+        html += row + '</tr>';
+      }
+      html += '</tbody></table>';
+      tableDiv.innerHTML = html;
     }
 
     function switchTab(n) {
