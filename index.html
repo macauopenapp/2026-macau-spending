@@ -1,184 +1,520 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-MO">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2026澳門消費大獎賞 記帳監督器</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; }
-    .card { background: white; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05); }
-  </style>
-</head>
-<body class="bg-slate-50 text-slate-700 min-h-screen pb-20">
-  <div class="max-w-2xl mx-auto">
-
-    <div class="bg-white border-b sticky top-0 z-50 px-6 py-5">
-      <h1 class="text-2xl font-semibold text-slate-900">消費大獎賞監督器</h1>
-      <p class="text-xs text-slate-500">2026 • 一站式上傳測試版</p>
-    </div>
-
-    <div class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t flex z-50">
-      <button onclick="switchTab(0)" id="tab0" class="flex-1 py-4 border-b-2 border-sky-600 text-sky-600 font-medium">記錄</button>
-      <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4">我的統計</button>
-      <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4">全澳概率</button>
-    </div>
-
-    <!-- Page 1: 記錄 -->
-    <div id="page0" class="p-6">
-      <div class="card rounded-3xl p-6">
-        <h2 class="text-xl font-semibold mb-6">新增抽獎記錄</h2>
-        <div class="space-y-6">
-          <div>
-            <label class="block text-xs uppercase tracking-widest text-slate-500 mb-1">抽獎日期</label>
-            <select id="dateSelect" class="w-full border border-slate-200 rounded-2xl px-5 py-4 text-base"></select>
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-widest text-slate-500 mb-1">支付系統</label>
-            <select id="paymentSelect" class="w-full border border-slate-200 rounded-2xl px-5 py-4 text-base"></select>
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-widest text-slate-500 mb-2">抽獎面額（可多選）</label>
-            <div class="grid grid-cols-3 gap-3" id="prizeOptions"></div>
-          </div>
-        </div>
-      </div>
-
-      <button onclick="saveLocal()" class="mt-8 w-full bg-slate-800 text-white py-5 rounded-3xl text-lg font-semibold">💾 只存手機</button>
-      <button onclick="uploadToSheet()" class="mt-3 w-full bg-emerald-600 text-white py-5 rounded-3xl text-lg font-semibold" id="uploadBtn">☁️ 上傳到全澳統計</button>
-    </div>
-
-    <!-- Page 3: 全澳概率 -->
-    <div id="page2" class="p-6 hidden">
-      <h2 class="text-xl font-semibold mb-6">全澳概率統計</h2>
-      <div id="totalSamples" class="bg-white rounded-3xl p-5 text-center mb-6 font-medium"></div>
-      <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
-    </div>
-  </div>
-
-  <script>
-    const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxP2Acck5jB6Kd6DKhI5cGtaL-fHlDqK_nYKhMOHAaWvo0ZxuQ4RlBX6vRV3OQ4QL8LBw/exec";
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/1RkTNjEyGSry_IL0jC344dBqoXOZoLH7aCWaVeWym3Fk/export?format=csv&gid=0";
-
-    let personalRecords = JSON.parse(localStorage.getItem('spendingRecords')) || [];
-    let crowdData = [];
-
-    const dates = ["2026-04-10 第1週 周五","2026-04-11 第1週 周六","2026-04-12 第1週 周日","2026-04-17 第2週 周五","2026-04-18 第2週 周六","2026-04-19 第2週 周日","2026-04-24 第3週 周五","2026-04-25 第3週 周六","2026-04-26 第3週 周日","2026-05-01 第4週 周五","2026-05-02 第4週 周六","2026-05-03 第4週 周日","2026-05-08 第5週 周五","2026-05-09 第5週 周六","2026-05-10 第5週 周日","2026-05-15 第6週 周五","2026-05-16 第6週 周六","2026-05-17 第6週 周日","2026-05-22 第7週 周五","2026-05-23 第7週 周六","2026-05-24 第7週 周日","2026-05-29 第8週 周五","2026-05-30 第8週 周六","2026-05-31 第8週 周日","2026-06-05 第9週 周五","2026-06-06 第9週 周六","2026-06-07 第9週 周日","2026-06-12 第10週 周五","2026-06-13 第10週 周六","2026-06-14 第10週 周日"];
-    const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
-    const prizes = [0,10,20,50,100,200];
-
-    function init() {
-      const ds = document.getElementById('dateSelect');
-      dates.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
-
-      const ps = document.getElementById('paymentSelect');
-      payments.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; ps.appendChild(o); });
-
-      const po = document.getElementById('prizeOptions');
-      prizes.forEach(p => {
-        const btn = document.createElement('button');
-        btn.className = 'border border-slate-300 hover:border-slate-500 rounded-2xl py-6 text-xl font-medium transition-all active:scale-95';
-        btn.textContent = p + '元';
-        btn.onclick = () => btn.classList.toggle('border-sky-500');
-        po.appendChild(btn);
-      });
-
-      loadCrowdData();
-      switchTab(0);
-    }
-
-    async function loadCrowdData() {
-      Papa.parse(CSV_URL, {
-        download: true,
-        header: true,
-        complete: (res) => {
-          crowdData = res.data.filter(r => r.抽獎日期);
-          renderCrowdProbability();
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2026澳門消費大獎賞 記帳監督器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0f172a', // slate-900
+                        secondary: '#3b82f6', // blue-500
+                        accent: '#f59e0b', // amber-500
+                    }
+                }
+            }
         }
-      });
-    }
+    </script>
+    <style>
+        /* 隱藏滾動條但保持可滾動 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans pb-20">
 
-    async function uploadToSheet() {
-      const btn = document.getElementById('uploadBtn');
-      btn.disabled = true;
-      btn.textContent = '上傳中...';
+    <!-- 頂部導航 -->
+    <header class="bg-primary text-white p-4 shadow-md sticky top-0 z-10">
+        <h1 class="text-lg font-bold text-center tracking-wider">2026消費大獎賞監督器</h1>
+    </header>
 
-      const date = document.getElementById('dateSelect').value;
-      const payment = document.getElementById('paymentSelect').value;
-      const selected = Array.from(document.querySelectorAll('#prizeOptions button.border-sky-500')).map(b => parseInt(b.textContent));
-
-      if (selected.length === 0) {
-        alert('請至少選擇一個面額');
-        btn.disabled = false;
-        btn.textContent = '☁️ 上傳到全澳統計';
-        return;
-      }
-
-      try {
-        const promises = selected.map(prize => 
-          fetch(UPLOAD_URL, {
-            method: 'POST',
-            mode: 'no-cors',           // 關鍵：使用 no-cors 模式
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date, payment, prize })
-          })
-        );
-
-        await Promise.all(promises);
+    <!-- 主內容區 -->
+    <main class="max-w-md mx-auto p-4">
         
-        alert('✅ 上傳請求已送出！\n\n因為使用了 no-cors 模式，無法讀取回應。\n但如果你確認 Google Sheet 已寫入資料，就代表成功了！');
-        loadCrowdData();
-      } catch (e) {
-        alert('錯誤：' + e.message);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '☁️ 上傳到全澳統計';
-      }
-    }
+        <!-- 視圖 1: 記錄頁 -->
+        <section id="view-record" class="space-y-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+                <h2 class="text-xl font-semibold mb-4 text-slate-700 border-b pb-2">新增抽獎記錄</h2>
+                
+                <form id="record-form" class="space-y-5">
+                    <!-- 日期選擇 -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">抽獎日期</label>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <select id="week-select" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-secondary outline-none">
+                                <option value="1">第 1 週</option>
+                                <option value="2">第 2 週</option>
+                                <option value="3">第 3 週</option>
+                                <option value="4">第 4 週</option>
+                                <option value="5">第 5 週</option>
+                                <option value="6">第 6 週</option>
+                                <option value="7">第 7 週</option>
+                                <option value="8">第 8 週</option>
+                                <option value="9">第 9 週</option>
+                                <option value="10">第 10 週</option>
+                            </select>
+                            <select id="day-select" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-secondary outline-none">
+                                <option value="周五">周五</option>
+                                <option value="周六">周六</option>
+                                <option value="周日">周日</option>
+                            </select>
+                        </div>
+                        <input type="date" id="date-input" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-secondary outline-none" required>
+                    </div>
 
-    function saveLocal() {
-      alert('已存入手機（此功能保留）');
-    }
+                    <!-- 支付系統 -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-2">支付系統 <span class="text-xs text-slate-400 font-normal">(每週每系統限3次)</span></label>
+                        <select id="payment-select" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-secondary outline-none">
+                            <option value="MPay澳門錢包">MPay澳門錢包</option>
+                            <option value="支付寶(澳門)">支付寶(澳門)</option>
+                            <option value="澳門中銀手機銀行">澳門中銀手機銀行</option>
+                            <option value="工銀e支付">工銀e支付</option>
+                            <option value="豐付寶">豐付寶</option>
+                            <option value="廣發移動支付錢包">廣發移動支付錢包</option>
+                            <option value="LusoPay">LusoPay</option>
+                            <option value="極易付澳門錢包/UePay">極易付澳門錢包/UePay</option>
+                        </select>
+                    </div>
 
-    function renderCrowdProbability() {
-      const sampleDiv = document.getElementById('totalSamples');
-      const tableDiv = document.getElementById('probTable');
+                    <!-- 抽獎面額 -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-2">抽獎面額 (可多選)</label>
+                        <div class="grid grid-cols-3 gap-2" id="amount-container">
+                            <!-- JS 動態生成按鈕 -->
+                        </div>
+                    </div>
 
-      if (crowdData.length === 0) {
-        tableDiv.innerHTML = `<p class="text-center py-12 text-slate-400">尚無數據，請上傳後刷新</p>`;
-        return;
-      }
+                    <!-- 按鈕區 -->
+                    <div class="pt-4 space-y-3">
+                        <button type="button" onclick="saveRecord('local')" class="w-full py-3 bg-slate-100 text-slate-700 font-semibold rounded-lg shadow-sm border border-slate-200 hover:bg-slate-200 transition flex justify-center items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                            💾 只存手機
+                        </button>
+                        <button type="button" onclick="saveRecord('cloud')" class="w-full py-3 bg-secondary text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition flex justify-center items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            ☁️ 上傳到全澳統計
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
 
-      sampleDiv.textContent = `全澳總樣本數：${crowdData.length} 筆`;
+        <!-- 視圖 2: 我的統計 -->
+        <section id="view-stats" class="space-y-4 hidden">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                    <p class="text-sm text-slate-500 mb-1">總抽獎次數</p>
+                    <p class="text-2xl font-bold text-primary" id="my-total-draws">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                    <p class="text-sm text-slate-500 mb-1">總中獎金額</p>
+                    <p class="text-2xl font-bold text-accent" id="my-total-amount">0 <span class="text-sm">元</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center col-span-2">
+                    <p class="text-sm text-slate-500 mb-1">中獎率 (大於0元)</p>
+                    <p class="text-2xl font-bold text-secondary" id="my-win-rate">0%</p>
+                </div>
+            </div>
 
-      let html = `<table class="w-full text-sm"><thead><tr class="bg-slate-100"><th class="p-3">週數</th><th class="p-3">總次數</th>`;
-      prizes.forEach(p => html += `<th class="p-3">${p}元 (%)</th>`);
-      html += `</tr></thead><tbody>`;
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <h3 class="text-md font-semibold text-slate-700 mb-3">面額分佈</h3>
+                <canvas id="myChart" height="200"></canvas>
+            </div>
+            
+            <div class="text-center">
+                <button onclick="clearLocalData()" class="text-sm text-red-500 underline">清除本地所有記錄</button>
+            </div>
+        </section>
 
-      for (let w = 1; w <= 10; w++) {
-        const weekData = crowdData.filter(r => r.抽獎日期 && r.抽獎日期.includes(`第${w}週`));
-        if (weekData.length === 0) continue;
-        const total = weekData.length;
-        let row = `<tr class="border-b"><td class="p-3 font-medium">第${w}週</td><td class="p-3 text-center">${total}</td>`;
-        prizes.forEach(p => {
-          const count = weekData.filter(r => parseInt(r.抽獎面額) === p).length;
-          const percent = total > 0 ? (count / total * 100).toFixed(1) : 0;
-          row += `<td class="p-3 text-center">${count} <span class="text-xs text-slate-400">(${percent}%)</span></td>`;
+        <!-- 視圖 3: 全澳概率 -->
+        <section id="view-global" class="space-y-4 hidden">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                <p class="text-sm text-slate-500 mb-1">全澳總樣本數</p>
+                <p class="text-3xl font-bold text-primary" id="global-total-samples">加載中...</p>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <h3 class="text-md font-semibold text-slate-700 mb-3">全澳面額分佈趨勢</h3>
+                <canvas id="globalChart" height="250"></canvas>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 overflow-x-auto">
+                <h3 class="text-md font-semibold text-slate-700 mb-3">各面額總計百分比</h3>
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                        <tr>
+                            <th class="px-3 py-2">面額</th>
+                            <th class="px-3 py-2">次數</th>
+                            <th class="px-3 py-2">概率</th>
+                        </tr>
+                    </thead>
+                    <tbody id="global-table-body">
+                        <!-- 動態填充 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-center">
+                <button onclick="loadGlobalData()" class="text-sm text-secondary bg-blue-50 px-4 py-2 rounded-full">🔄 重新整理數據</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 底部導航 -->
+    <nav class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around items-center pb-safe">
+        <button onclick="switchTab('record')" id="nav-record" class="flex-1 py-3 flex flex-col items-center text-secondary transition">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            <span class="text-xs font-medium">記錄</span>
+        </button>
+        <button onclick="switchTab('stats')" id="nav-stats" class="flex-1 py-3 flex flex-col items-center text-slate-400 hover:text-secondary transition">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            <span class="text-xs font-medium">我的統計</span>
+        </button>
+        <button onclick="switchTab('global')" id="nav-global" class="flex-1 py-3 flex flex-col items-center text-slate-400 hover:text-secondary transition">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-xs font-medium">全澳概率</span>
+        </button>
+    </nav>
+
+    <!-- 提示框 (Toast) -->
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50">
+        提示訊息
+    </div>
+
+    <script>
+        // --- 設定區 ---
+        // 請將此處替換為您的 Google Apps Script Web App URL
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz_YOUR_SCRIPT_ID/exec"; 
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1RkTNjEyGSry_IL0jC344dBqoXOZoLH7aCWaVeWym3Fk/gviz/tq?tqx=out:csv&sheet=RawData";
+        
+        const AMOUNTS = [0, 10, 20, 50, 100, 200];
+        let selectedAmounts = [];
+        let myChartInstance = null;
+        let globalChartInstance = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initAmountButtons();
+            setDefaultDate();
+            loadMyStats(); // 預先加載本地數據
         });
-        html += row + '</tr>';
-      }
-      html += '</tbody></table>';
-      tableDiv.innerHTML = html;
-    }
 
-    function switchTab(n) {
-      for (let i = 0; i < 3; i++) document.getElementById('page' + i).classList.add('hidden');
-      document.getElementById('page' + n).classList.remove('hidden');
-    }
+        // 預設日期為今天
+        function setDefaultDate() {
+            const today = new Date();
+            document.getElementById('date-input').value = today.toISOString().split('T')[0];
+        }
 
-    window.onload = init;
-  </script>
+        // 初始化面額按鈕
+        function initAmountButtons() {
+            const container = document.getElementById('amount-container');
+            AMOUNTS.forEach(amt => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'py-2 border border-slate-200 rounded-lg text-slate-600 font-medium transition bg-white hover:bg-slate-50';
+                btn.innerText = `${amt}元`;
+                btn.onclick = () => toggleAmount(amt, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function toggleAmount(amt, btnElement) {
+            const index = selectedAmounts.indexOf(amt);
+            if (index > -1) {
+                // 取消選中
+                selectedAmounts.splice(index, 1);
+                btnElement.classList.remove('bg-secondary', 'text-white', 'border-secondary');
+                btnElement.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            } else {
+                // 選中 (允許重複面額，這裡設計為點擊選中/取消，若要同面額多次需改成計數器，此處依需求為多選)
+                selectedAmounts.push(amt);
+                btnElement.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                btnElement.classList.add('bg-secondary', 'text-white', 'border-secondary');
+            }
+        }
+
+        function resetForm() {
+            selectedAmounts = [];
+            const container = document.getElementById('amount-container');
+            Array.from(container.children).forEach(btn => {
+                btn.classList.remove('bg-secondary', 'text-white', 'border-secondary');
+                btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            });
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.style.backgroundColor = isError ? '#ef4444' : '#10b981';
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 3000);
+        }
+
+        // --- 儲存邏輯 ---
+        function saveRecord(type) {
+            if (selectedAmounts.length === 0) {
+                showToast('請至少選擇一個抽獎面額！', true);
+                return;
+            }
+
+            const recordData = {
+                timestamp: new Date().toISOString(),
+                week: document.getElementById('week-select').value,
+                day: document.getElementById('day-select').value,
+                date: document.getElementById('date-input').value,
+                payment: document.getElementById('payment-select').value,
+                amounts: selectedAmounts
+            };
+
+            if (type === 'local') {
+                saveToLocal(recordData);
+                showToast('已成功儲存至手機！');
+                resetForm();
+            } else if (type === 'cloud') {
+                saveToLocal(recordData); // 雲端上傳也同時存本地
+                uploadToCloud(recordData);
+            }
+        }
+
+        function saveToLocal(data) {
+            let records = JSON.parse(localStorage.getItem('macau_rewards_2026') || '[]');
+            // 展開 amounts 陣列，讓每一次抽獎獨立成一筆記錄方便統計
+            data.amounts.forEach(amt => {
+                records.push({
+                    timestamp: data.timestamp,
+                    week: data.week,
+                    day: data.day,
+                    date: data.date,
+                    payment: data.payment,
+                    amount: amt
+                });
+            });
+            localStorage.setItem('macau_rewards_2026', JSON.stringify(records));
+            loadMyStats(); // 更新統計
+        }
+
+        function clearLocalData() {
+            if(confirm('確定要清除手機上的所有記錄嗎？')) {
+                localStorage.removeItem('macau_rewards_2026');
+                loadMyStats();
+                showToast('已清除本地記錄');
+            }
+        }
+
+        // --- 解決 CORS 的上傳邏輯 ---
+        function uploadToCloud(data) {
+            showToast('上傳中...');
+            
+            // 將資料轉換為平坦的陣列，方便 GAS 寫入多行
+            const payload = data.amounts.map(amt => ({
+                timestamp: data.timestamp,
+                week: data.week,
+                day: data.day,
+                date: data.date,
+                payment: data.payment,
+                amount: amt
+            }));
+
+            // 關鍵：使用 mode: 'no-cors' 和 text/plain 避免 Preflight 請求失敗
+            fetch(GAS_WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                // no-cors 模式下無法讀取 response，只要沒拋出網路錯誤就視為成功
+                showToast('上傳成功！感謝貢獻數據。');
+                resetForm();
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                showToast('上傳失敗，請檢查網路連接。', true);
+            });
+        }
+
+        // --- 統計與圖表邏輯 ---
+        function loadMyStats() {
+            const records = JSON.parse(localStorage.getItem('macau_rewards_2026') || '[]');
+            
+            const totalDraws = records.length;
+            const totalAmount = records.reduce((sum, r) => sum + r.amount, 0);
+            const winDraws = records.filter(r => r.amount > 0).length;
+            const winRate = totalDraws === 0 ? 0 : Math.round((winDraws / totalDraws) * 100);
+
+            document.getElementById('my-total-draws').innerText = totalDraws;
+            document.getElementById('my-total-amount').innerText = totalAmount + ' 元';
+            document.getElementById('my-win-rate').innerText = winRate + '%';
+
+            // 統計各面額次數
+            const amountCounts = {0:0, 10:0, 20:0, 50:0, 100:0, 200:0};
+            records.forEach(r => {
+                if(amountCounts[r.amount] !== undefined) amountCounts[r.amount]++;
+            });
+
+            renderMyChart(amountCounts);
+        }
+
+        function renderMyChart(data) {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            if (myChartInstance) myChartInstance.destroy();
+
+            myChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['0元', '10元', '20元', '50元', '100元', '200元'],
+                    datasets: [{
+                        label: '獲得次數',
+                        data: [data[0], data[10], data[20], data[50], data[100], data[200]],
+                        backgroundColor: [
+                            '#94a3b8', '#60a5fa', '#34d399', '#fbbf24', '#f97316', '#ef4444'
+                        ],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        // --- 全澳數據讀取 (PapaParse) ---
+        function loadGlobalData() {
+            document.getElementById('global-total-samples').innerText = '加載中...';
+            
+            Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    processGlobalData(results.data);
+                },
+                error: function(err) {
+                    console.error(err);
+                    document.getElementById('global-total-samples').innerText = '讀取失敗';
+                    showToast('無法讀取全澳數據', true);
+                }
+            });
+        }
+
+        function processGlobalData(data) {
+            // 過濾掉空行
+            const validData = data.filter(row => row.amount !== undefined && row.amount !== "");
+            const totalSamples = validData.length;
+            document.getElementById('global-total-samples').innerText = totalSamples;
+
+            if (totalSamples === 0) return;
+
+            // 統計各面額總計
+            const amountCounts = {0:0, 10:0, 20:0, 50:0, 100:0, 200:0};
+            // 統計每週數據用於堆疊圖
+            const weeklyData = {};
+
+            validData.forEach(row => {
+                const amt = parseInt(row.amount);
+                const week = row.week || '未知';
+                
+                if (amountCounts[amt] !== undefined) amountCounts[amt]++;
+                
+                if (!weeklyData[week]) {
+                    weeklyData[week] = {0:0, 10:0, 20:0, 50:0, 100:0, 200:0};
+                }
+                if (weeklyData[week][amt] !== undefined) {
+                    weeklyData[week][amt]++;
+                }
+            });
+
+            // 渲染表格
+            const tbody = document.getElementById('global-table-body');
+            tbody.innerHTML = '';
+            AMOUNTS.forEach(amt => {
+                const count = amountCounts[amt];
+                const percentage = ((count / totalSamples) * 100).toFixed(1);
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100">
+                        <td class="px-3 py-2 font-medium">${amt}元</td>
+                        <td class="px-3 py-2">${count}</td>
+                        <td class="px-3 py-2">${percentage}%</td>
+                    </tr>
+                `;
+            });
+
+            renderGlobalChart(weeklyData);
+        }
+
+        function renderGlobalChart(weeklyData) {
+            const ctx = document.getElementById('globalChart').getContext('2d');
+            if (globalChartInstance) globalChartInstance.destroy();
+
+            // 排序週數 (假設格式為數字或 "1", "2")
+            const weeks = Object.keys(weeklyData).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            const datasets = AMOUNTS.map((amt, index) => {
+                const colors = ['#94a3b8', '#60a5fa', '#34d399', '#fbbf24', '#f97316', '#ef4444'];
+                return {
+                    label: `${amt}元`,
+                    data: weeks.map(w => weeklyData[w][amt]),
+                    backgroundColor: colors[index],
+                };
+            });
+
+            globalChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: weeks.map(w => `第${w}週`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                    }
+                }
+            });
+        }
+
+        // --- 導航切換 ---
+        function switchTab(tabId) {
+            // 隱藏所有視圖
+            document.getElementById('view-record').classList.add('hidden');
+            document.getElementById('view-stats').classList.add('hidden');
+            document.getElementById('view-global').classList.add('hidden');
+            
+            // 重置導航樣式
+            ['record', 'stats', 'global'].forEach(id => {
+                const nav = document.getElementById(`nav-${id}`);
+                nav.classList.remove('text-secondary');
+                nav.classList.add('text-slate-400');
+            });
+
+            // 顯示目標視圖
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            activeNav.classList.remove('text-slate-400');
+            activeNav.classList.add('text-secondary');
+
+            // 觸發特定視圖的資料加載
+            if (tabId === 'stats') loadMyStats();
+            if (tabId === 'global') loadGlobalData();
+        }
+    </script>
 </body>
 </html>
