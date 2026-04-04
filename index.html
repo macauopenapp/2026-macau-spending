@@ -129,7 +129,7 @@
         </div>
       </div>
 
-      <!-- 預估剩餘彩池 -->
+      <!-- 預估剩餘彩池（動態推算） -->
       <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-6 mb-8">
         <div class="flex justify-between items-start mb-4">
           <div>
@@ -247,12 +247,12 @@
       return { remaining: Math.round(remaining), avg: avg.toFixed(1), disbursed: Math.round(disbursed) };
     }
 
-    // ============ 已修正的 suggestTotalDraws()（完全移除最低下限） ============
+    // 修正後的 suggestTotalDraws（純動態 ×600，無強制下限）
     function suggestTotalDraws() {
       const sampleCount = crowdData.length;
       if (sampleCount === 0) {
-        alert('目前還沒有樣本數據，將使用活動初期合理起始值 300,000 筆');
-        document.getElementById('estimatedDraws').value = 300000;
+        document.getElementById('estimatedDraws').value = 400000;
+        alert('目前還沒有樣本數據，將使用活動初期合理起始值 400,000 筆');
       } else {
         const suggested = Math.round(sampleCount * 600);
         document.getElementById('estimatedDraws').value = suggested;
@@ -264,7 +264,7 @@
     function renderRemainingPool() {
       let estimatedDraws = parseInt(document.getElementById('estimatedDraws').value);
       if (!estimatedDraws || estimatedDraws <= 0) {
-        estimatedDraws = crowdData.length > 0 ? Math.round(crowdData.length * 600) : 300000;
+        estimatedDraws = crowdData.length > 0 ? Math.round(crowdData.length * 600) : 400000;
         document.getElementById('estimatedDraws').value = estimatedDraws;
       }
       const usageRate = parseFloat(document.getElementById('usageRate').value) || 88;
@@ -325,7 +325,140 @@
       });
     }
 
-    // 其餘函數與上一版完全相同（togglePrize、googleLogin、saveAndContribute、loadPersonalRecords、loadCrowdData、renderMyStats、renderHistoryList、deleteRecord、showEditModal、hideEditModal、saveEdit、renderCrowdProbability、switchTab）
+    function togglePrize(btn) {
+      const prize = parseInt(btn.dataset.prize);
+      if (btn.classList.contains('selected')) {
+        btn.classList.remove('selected');
+        selectedPrizes = selectedPrizes.filter(p => p !== prize);
+      } else {
+        if (selectedPrizes.length >= 3) return alert('⚠️ 一筆消費最多3次機會');
+        btn.classList.add('selected');
+        selectedPrizes.push(prize);
+      }
+      document.getElementById('selectionCounter').textContent = `已選 ${selectedPrizes.length} / 3 次機會`;
+    }
+
+    async function googleLogin() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try { await auth.signInWithPopup(provider); } catch (e) { alert('登入失敗：' + e.message); }
+    }
+
+    async function saveAndContribute() {
+      if (!currentUser) return alert('請先登入 Google 帳戶');
+      const date = document.getElementById('dateSelect').value;
+      const payment = document.getElementById('paymentSelect').value;
+      if (selectedPrizes.length === 0) return alert('請至少選擇一個面額');
+
+      const week = getWeekNumber(date);
+      const currentWeekCount = personalRecords.filter(r => getWeekNumber(r.date) === week && r.payment === payment).length;
+      if (currentWeekCount + selectedPrizes.length > 3) return alert(`⚠️ ${payment} 本週已使用 ${currentWeekCount} 次！\n每週每支付系統上限僅3次。`);
+
+      const btn = document.getElementById('mainBtn');
+      btn.disabled = true; btn.textContent = '儲存中...';
+
+      try {
+        for (let prize of selectedPrizes) {
+          await db.collection('personalRecords').add({ uid: currentUser.uid, date, payment, prize, week, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+          await db.collection('crowdRecords').add({ date, payment, prize, week, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        selectedPrizes = [];
+        document.getElementById('selectionCounter').textContent = `已選 0 / 3 次機會`;
+        await refreshAllData();
+        alert('✅ 已成功儲存並貢獻到全澳運勢！');
+      } catch (e) { alert('儲存失敗：' + e.message); } finally {
+        btn.disabled = false; btn.textContent = '💾 儲存並貢獻到全澳運勢';
+      }
+    }
+
+    async function loadPersonalRecords() {
+      if (!currentUser) return;
+      const snapshot = await db.collection('personalRecords').where('uid', '==', currentUser.uid).get();
+      personalRecords = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+      renderMyStats();
+    }
+
+    async function loadCrowdData() {
+      const snapshot = await db.collection('crowdRecords')
+        .orderBy('timestamp', 'desc')
+        .limit(2000)
+        .get();
+      crowdData = snapshot.docs.map(doc => doc.data());
+      renderCrowdProbability();
+    }
+
+    function renderMyStats() {
+      const container = document.getElementById('myStats');
+      if (personalRecords.length === 0) {
+        container.innerHTML = `<p class="col-span-3 text-center py-12 text-slate-400">還沒有記錄</p>`;
+        return;
+      }
+      const total = personalRecords.length;
+      const totalPrize = personalRecords.reduce((sum, r) => sum + r.prize, 0);
+      const winRate = ((personalRecords.filter(r => r.prize > 0).length / total) * 100).toFixed(1);
+
+      container.innerHTML = `
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-sky-600">${total}</div><div class="text-xs text-slate-500">總抽獎次數</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-emerald-600">$${totalPrize}</div><div class="text-xs text-slate-500">總中獎金額</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${winRate}%</div><div class="text-xs text-slate-500">整體中獎率</div></div>
+      `;
+      new Chart(document.getElementById('myChart'), { type: 'bar', data: { labels: prizes, datasets: [{ label: '面額分佈', data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), backgroundColor: '#10b981' }] } });
+
+      renderHistoryList();
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('historyList');
+      container.innerHTML = personalRecords.map(r => `
+        <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
+          <div>
+            <div class="font-medium">${r.date}</div>
+            <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="showEditModal('${r.id}')" class="px-5 py-2 text-emerald-600 border border-emerald-200 rounded-2xl text-sm">修改</button>
+            <button onclick="deleteRecord('${r.id}')" class="px-5 py-2 text-rose-600 border border-rose-200 rounded-2xl text-sm">刪除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function deleteRecord(id) {
+      if (!confirm('確定要刪除這筆抽獎記錄嗎？')) return;
+      try {
+        await db.collection('personalRecords').doc(id).delete();
+        await refreshAllData();
+        alert('✅ 已刪除記錄');
+      } catch (e) { alert('刪除失敗：' + e.message); }
+    }
+
+    function showEditModal(id) {
+      editingRecordId = id;
+      const record = personalRecords.find(r => r.id === id);
+      const editDate = document.getElementById('editDate');
+      editDate.innerHTML = dates.map(d => `<option value="${d}" ${d===record.date?'selected':''}>${d}</option>`).join('');
+      const editPayment = document.getElementById('editPayment');
+      editPayment.innerHTML = payments.map(p => `<option value="${p}" ${p===record.payment?'selected':''}>${p}</option>`).join('');
+      const editPrize = document.getElementById('editPrize');
+      editPrize.innerHTML = prizes.map(p => `<option value="${p}" ${p===record.prize?'selected':''}>${p===0?'未中獎 (0元)':p+'元'}</option>`).join('');
+      document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function hideEditModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+
+    async function saveEdit() {
+      if (!editingRecordId) return;
+      const newDate = document.getElementById('editDate').value;
+      const newPayment = document.getElementById('editPayment').value;
+      const newPrize = parseInt(document.getElementById('editPrize').value);
+      try {
+        await db.collection('personalRecords').doc(editingRecordId).update({ date: newDate, payment: newPayment, prize: newPrize });
+        hideEditModal();
+        await refreshAllData();
+        alert('✅ 已成功更新記錄！');
+      } catch (e) { alert('更新失敗：' + e.message); }
+    }
 
     function renderCrowdProbability() {
       const total = crowdData.length;
