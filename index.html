@@ -326,26 +326,37 @@
                 upload_time: baseRecord.upload_time
             }));
 
-           fetch(GAS_WEB_APP_URL, {
+           // 假設 dataToUpload 是你要上傳的陣列
+fetch(GAS_WEB_APP_URL, {
     method: "POST",
+    // ❌ 絕對不要加 mode: "no-cors"，這會導致你無法讀取 GAS 的回傳結果
     body: JSON.stringify(dataToUpload),
     headers: {
+        // ✅ 必須使用 text/plain，這樣可以避開瀏覽器的 CORS 預檢請求 (OPTIONS)
         "Content-Type": "text/plain;charset=utf-8"
     }
-    // 不要加 mode: 'no-cors'
 })
-.then(response => response.json())
+.then(response => {
+    if (!response.ok) {
+        throw new Error("網路回應錯誤狀態碼: " + response.status);
+    }
+    return response.json(); // 解析 GAS 回傳的 JSON
+})
 .then(data => {
-    console.log("GAS 回應:", data); // 加這行來看實際回應
     if (data.status === "success") {
+        // 只有在 GAS 明確回傳 success 時，才顯示成功
         showToast("上傳成功！感謝貢獻數據。", "success");
+        // 可以在這裡呼叫重新整理全澳數據的函數
     } else {
+        // GAS 執行報錯 (例如找不到 Sheet)
         showToast("上傳失敗：" + data.message, "error");
+        console.error("GAS 內部錯誤:", data.message);
     }
 })
 .catch(error => {
-    console.error("上傳錯誤:", error);
-    showToast("上傳失敗", "error");
+    // 網路斷線或 CORS 阻擋會跑到這裡
+    showToast("上傳失敗，請檢查網路或控制台日誌", "error");
+    console.error("Fetch 請求失敗:", error);
 });
 
         // --- 統計與圖表邏輯 ---
