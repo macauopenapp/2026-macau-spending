@@ -224,16 +224,13 @@
       return match ? parseInt(match[1]) : null;
     }
 
-    // ============== 新增：我的抽獎專用日期格式化（按您的要求） ==============
+    // ============== 修正後的格式化函式（我的抽獎專用） ==============
     function formatMyRecordDate(dateStr) {
-      // 輸入示例： "2026-04-10 第1周 周五"
-      // 輸出示例： "第1周 4/10 (五)"
       const parts = dateStr.split(' ');
-      const datePart = parts[0];                    // "2026-04-10"
-      const weekNum = parts[1].replace('第', '').replace('周', '周'); // "1"
-      let day = parts[2];                           // "周五"
-      day = day.replace('周', '');                  // 去掉「周」 → "五"
-      const monthDay = datePart.substring(5).replace('-', '/'); // "04-10" → "4/10"
+      const datePart = parts[0];
+      const weekNum = parts[1].replace('第', '').replace('周', '');
+      let day = parts[2].replace('周', '');
+      const monthDay = datePart.substring(5).replace('-', '/');
       return `第${weekNum}周 ${monthDay} (${day})`;
     }
 
@@ -612,6 +609,7 @@
         </div>
       `;
 
+      // ============== 修正重點：交叉分析表周數改成「第X周 (範圍)」 ==============
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
@@ -620,7 +618,7 @@
         const range = weekRanges[week] || '';
         const weekData = crowdData.filter(r => getWeekNumber(r.date) === week);
         const weekTotal = weekData.length;
-        paymentHTML += `<tr><td class="font-medium text-left">${week}周<br><span class="text-xs text-slate-500">(${range})</span></td>`;
+        paymentHTML += `<tr><td class="font-medium text-left">第${week}周<br><span class="text-xs text-slate-500">(${range})</span></td>`;
         payments.forEach(pay => {
           const count = weekData.filter(r => r.payment === pay).length;
           const percent = weekTotal ? ((count / weekTotal) * 100).toFixed(0) : 0;
@@ -639,7 +637,7 @@
         const range = weekRanges[week] || '';
         const weekData = crowdData.filter(r => getWeekNumber(r.date) === week);
         const weekTotal = weekData.length;
-        prizeHTML += `<tr><td class="font-medium text-left">${week}周<br><span class="text-xs text-slate-500">(${range})</span></td>`;
+        prizeHTML += `<tr><td class="font-medium text-left">第${week}周<br><span class="text-xs text-slate-500">(${range})</span></td>`;
         [0,10,20,50,100,200].forEach(pr => {
           const count = weekData.filter(r => r.prize === pr).length;
           const percent = weekTotal ? ((count / weekTotal) * 100).toFixed(0) : 0;
@@ -657,7 +655,7 @@
         const week = getWeekNumber(d);
         const range = weekRanges[week] || '';
         const weekData = crowdData.filter(r => getWeekNumber(r.date) === week);
-        amountHTML += `<tr><td class="font-medium text-left">${week}周<br><span class="text-xs text-slate-500">(${range})</span></td>`;
+        amountHTML += `<tr><td class="font-medium text-left">第${week}周<br><span class="text-xs text-slate-500">(${range})</span></td>`;
         payments.forEach(pay => {
           const totalAmount = weekData.filter(r => r.payment === pay).reduce((sum, r) => sum + (r.prize || 0), 0);
           amountHTML += `<td class="font-semibold">$${totalAmount}</td>`;
@@ -673,7 +671,6 @@
       container.innerHTML = personalRecords.map(r => `
         <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
           <div>
-            <!-- 已調整為您指定的格式：第1周 4/10 (五) -->
             <div class="font-medium">${formatMyRecordDate(r.date)}</div>
             <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
           </div>
