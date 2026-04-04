@@ -89,12 +89,37 @@
       <div id="weeklyWarning" class="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm hidden"></div>
     </div>
 
-    <!-- Page 3: 全澳運勢 -->
+    <!-- Page 3: 全澳運勢（重點突出中獎率、平均金額、面額分佈） -->
     <div id="page2" class="p-6 hidden">
       <h2 class="text-2xl font-semibold mb-6">全澳運勢</h2>
       
-      <!-- 預估剩餘彩池（官方3.2億 + 過期失效公式） -->
-      <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-6 mb-6">
+      <!-- 最顯眼的核心統計卡（市民最想看的） -->
+      <div id="coreStatsCard" class="bg-white rounded-3xl p-6 mb-8 text-center">
+        <div class="grid grid-cols-3 gap-6">
+          <div>
+            <div class="text-xs text-slate-500">全澳總樣本</div>
+            <div id="totalSamplesBig" class="text-5xl font-bold text-emerald-600"></div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500">整體中獎率</div>
+            <div id="winRateBig" class="text-5xl font-bold text-amber-600"></div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500">平均每抽金額</div>
+            <div id="avgPrizeBig" class="text-5xl font-bold text-sky-600"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 面額分佈（重點強調） -->
+      <div class="mb-8">
+        <h3 class="font-semibold mb-3">各抽獎面額分佈</h3>
+        <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
+        <canvas id="probChart" class="mt-6"></canvas>
+      </div>
+
+      <!-- 預估剩餘彩池（放在下方，附清晰說明） -->
+      <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-6 mb-8">
         <div class="flex justify-between items-start mb-4">
           <div>
             <div class="text-lg font-medium">預估剩餘彩池金額</div>
@@ -102,30 +127,29 @@
           </div>
           <div class="text-right space-y-3">
             <div>
-              <input id="estimatedDraws" type="number" value="500000" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
+              <input id="estimatedDraws" type="number" value="800000" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
               <div class="text-[10px] opacity-75">預估全澳總抽獎筆數</div>
             </div>
             <div>
               <input id="usageRate" type="number" value="88" min="1" max="100" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
               <div class="text-[10px] opacity-75">% 使用率（考慮過期）</div>
             </div>
+            <button onclick="suggestTotalDraws()" 
+                    class="mt-2 px-5 py-2 bg-white/30 hover:bg-white/40 text-xs rounded-2xl transition-colors">
+              📊 根據目前樣本智能建議
+            </button>
           </div>
         </div>
         <div id="poolDetail" class="text-xs opacity-90 leading-relaxed"></div>
       </div>
 
-      <div id="totalSamples" class="bg-white rounded-3xl p-5 text-center mb-6 font-medium"></div>
-      <div id="statReliability" class="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 mb-6 text-sm"></div>
       <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-6 text-sm"></div>
-      
-      <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
-      <canvas id="probChart" class="mt-8"></canvas>
 
+      <!-- 交叉表格 -->
       <div class="mt-12">
         <h3 class="font-semibold mb-4">周數 × 支付系統 交叉統計</h3>
         <div id="crossPaymentTable" class="bg-white rounded-3xl overflow-auto"></div>
       </div>
-
       <div class="mt-12">
         <h3 class="font-semibold mb-4">周數 × 中獎面額 交叉統計</h3>
         <div id="crossPrizeTable" class="bg-white rounded-3xl overflow-auto"></div>
@@ -175,7 +199,6 @@
     let selectedPrizes = [];
     let editingRecordId = null;
 
-    // 8個支付系統（已移除 BOCPay）
     const dates = ["2026-04-10 第1週 周五","2026-04-11 第1週 周六","2026-04-12 第1週 周日","2026-04-17 第2週 周五","2026-04-18 第2週 周六","2026-04-19 第2週 周日","2026-04-24 第3週 周五","2026-04-25 第3週 周六","2026-04-26 第3週 周日","2026-05-01 第4週 周五","2026-05-02 第4週 周六","2026-05-03 第4週 周日","2026-05-08 第5週 周五","2026-05-09 第5週 周六","2026-05-10 第5週 周日","2026-05-15 第6週 周五","2026-05-16 第6週 周六","2026-05-17 第6週 周日","2026-05-22 第7週 周五","2026-05-23 第7週 周六","2026-05-24 第7週 周日","2026-05-29 第8週 周五","2026-05-30 第8週 周六","2026-05-31 第8週 周日","2026-06-05 第9週 周五","2026-06-06 第9週 周六","2026-06-07 第9週 周日","2026-06-12 第10週 周五","2026-06-13 第10週 周六","2026-06-14 第10週 周日"];
     const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
     const prizes = [0,10,20,50,100,200];
@@ -221,25 +244,32 @@
       return `數據高可信度（${count} 筆），已具全澳代表性！`;
     }
 
-    function checkWeeklyLimits() {
-      const weekly = {};
-      personalRecords.forEach(r => {
-        const week = getWeekNumber(r.date);
-        const key = `${week}-${r.payment}`;
-        weekly[key] = (weekly[key] || 0) + 1;
-      });
-      let warnings = [];
-      Object.keys(weekly).forEach(k => {
-        if (weekly[k] > 3) {
-          const [week, pay] = k.split('-');
-          warnings.push(`${pay} 第${week}週已記錄 ${weekly[k]}次（規則上限3次）`);
-        }
-      });
-      const warnDiv = document.getElementById('weeklyWarning');
-      if (warnings.length > 0) {
-        warnDiv.classList.remove('hidden');
-        warnDiv.innerHTML = `⚠️ <strong>每週上限提醒：</strong><br>` + warnings.join('<br>');
-      } else warnDiv.classList.add('hidden');
+    function suggestTotalDraws() {
+      const sampleCount = crowdData.length;
+      if (sampleCount === 0) return alert('目前還沒有樣本數據');
+      const suggested = Math.max(500000, Math.round(sampleCount * 800));
+      document.getElementById('estimatedDraws').value = suggested;
+      renderRemainingPool();
+      alert(`已根據目前樣本數建議全澳總抽獎筆數：${suggested.toLocaleString()} 筆（放大800倍）`);
+    }
+
+    function renderRemainingPool() {
+      const estimatedDraws = parseInt(document.getElementById('estimatedDraws').value) || 800000;
+      const usageRate = parseFloat(document.getElementById('usageRate').value) || 88;
+      const stats = calculatePoolStats(estimatedDraws, usageRate);
+
+      document.getElementById('remainingAmount').textContent = `$${stats.remaining.toLocaleString()}`;
+
+      document.getElementById('poolDetail').innerHTML = `
+        <strong>官方推算方式（電子優惠券彩池）</strong><br>
+        主辦單位：澳門經濟及科技發展局與澳門中華總商會<br>
+        電子優惠券官方預算 P = 3.2億澳門元<br><br>
+        剩餘彩池 = P - 已核銷總額<br>
+        已核銷總額 = 已發放總值 × 使用率 R<br>
+        已發放總值 = 樣本平均中獎金額 × 預估全澳總抽獎筆數<br><br>
+        目前樣本平均：$${stats.avg}　•　已發放估計：$${stats.disbursed.toLocaleString()}<br>
+        <span class="opacity-75">※ 為何不能直接用目前樣本數？因為樣本僅為自願上傳的部分，全澳實際總量遠大於此（人口68萬＋多錢包參與）。本預設值800,000筆為合理全澳估計，可手動調整或點擊「智能建議」。</span>
+      `;
     }
 
     function init() {
@@ -358,7 +388,6 @@
       `;
       new Chart(document.getElementById('myChart'), { type: 'bar', data: { labels: prizes, datasets: [{ label: '面額分佈', data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), backgroundColor: '#10b981' }] } });
 
-      checkWeeklyLimits();
       renderHistoryList();
     }
 
@@ -416,26 +445,6 @@
       } catch (e) { alert('更新失敗：' + e.message); }
     }
 
-    function renderRemainingPool() {
-      const estimatedDraws = parseInt(document.getElementById('estimatedDraws').value) || 500000;
-      const usageRate = parseFloat(document.getElementById('usageRate').value) || 88;
-      const stats = calculatePoolStats(estimatedDraws, usageRate);
-
-      document.getElementById('remainingAmount').textContent = `$${stats.remaining.toLocaleString()}`;
-
-      document.getElementById('poolDetail').innerHTML = `
-        <strong>官方推算方式（電子優惠券彩池）</strong><br>
-        主辦單位：澳門經濟及科技發展局與澳門中華總商會<br>
-        電子優惠券官方預算 P = 3.2億澳門元<br><br>
-        剩餘彩池 = P - 已核銷總額<br>
-        已核銷總額 = 已發放總值 × 使用率 R<br>
-        已發放總值 = 樣本平均中獎金額 × 預估全澳總抽獎筆數<br><br>
-        目前樣本平均：$${stats.avg}　•　已發放估計：$${stats.disbursed.toLocaleString()}<br>
-        <span class="opacity-75">※ 注意：每周未於周一至周四核銷的券會在周五凌晨過期失效，不構成政府實際支出。<br>
-        使用率 R 參考上一期活動整體88%（本次因4天核銷窗可能65%-90%波動）</span>
-      `;
-    }
-
     function renderCrowdProbability() {
       const total = crowdData.length;
       const prizeCount = {0:0,10:0,20:0,50:0,100:0,200:0};
@@ -447,21 +456,15 @@
         if (p > 0) wins++;
       });
 
-      document.getElementById('totalSamples').innerHTML = `全澳總樣本數：<span class="text-3xl font-bold text-emerald-600">${total}</span> 筆<br><span class="text-sm text-slate-500">整體中獎率 ${total?((wins/total)*100).toFixed(1):0}%</span>`;
-      document.getElementById('statReliability').innerHTML = `<strong class="text-emerald-700">數據可信度</strong><br>${getReliabilityMessage(total)}`;
-      document.getElementById('upperLimits').innerHTML = `
-        <div class="flex items-start gap-3">
-          <span class="text-2xl">📌</span>
-          <div>
-            <strong class="text-blue-700">抽獎機會上限（最新規則）</strong><br>
-            • 每支付系統每週最多 <strong class="text-blue-600">3次</strong><br>
-            • 8個錢包最多 <strong class="text-blue-600">24次/週</strong><br>
-            • 僅限週五至週日<br>
-            <span class="text-xs text-blue-600">目前樣本已收集 ${total} 次 • 數據品質高</span>
-          </div>
-        </div>
-      `;
+      const avgPrize = total ? (totalPrizeAmount / total).toFixed(1) : '0';
+      const winRate = total ? ((wins / total) * 100).toFixed(1) : '0';
 
+      // 核心統計卡（最顯眼）
+      document.getElementById('totalSamplesBig').textContent = total;
+      document.getElementById('winRateBig').textContent = winRate + '%';
+      document.getElementById('avgPrizeBig').textContent = '$' + avgPrize;
+
+      // 面額分佈表格
       let html = `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="px-6 py-3 text-left">面額</th><th class="px-6 py-3 text-center">次數</th><th class="px-6 py-3 text-center">概率</th></tr></thead><tbody class="divide-y">`;
       [0,10,20,50,100,200].forEach(p => {
         const count = prizeCount[p];
@@ -471,6 +474,7 @@
       html += `</tbody></table></div>`;
       document.getElementById('probTable').innerHTML = html;
 
+      // 圓餅圖
       const ctx = document.getElementById('probChart');
       if (window.myProbChart) window.myProbChart.destroy();
       window.myProbChart = new Chart(ctx, {
@@ -479,6 +483,21 @@
         options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
       });
 
+      // 上限說明
+      document.getElementById('upperLimits').innerHTML = `
+        <div class="flex items-start gap-3">
+          <span class="text-2xl">📌</span>
+          <div>
+            <strong class="text-blue-700">抽獎機會上限</strong><br>
+            • 每支付系統每週最多 <strong class="text-blue-600">3次</strong><br>
+            • 8個錢包最多 <strong class="text-blue-600">24次/週</strong><br>
+            • 僅限週五至週日<br>
+            <span class="text-xs text-blue-600">目前樣本已收集 ${total} 次 • 數據品質高</span>
+          </div>
+        </div>
+      `;
+
+      // 交叉表格（保持）
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
