@@ -25,7 +25,6 @@
         }
     </script>
     <style>
-        /* 隱藏滾動條但保持可滾動 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         body { -webkit-tap-highlight-color: transparent; }
@@ -194,7 +193,7 @@
 
     <script>
         // --- 設定區 ---
-        // 請將此處替換為您的 Google Apps Script Web App URL
+        // ⚠️ 請將此處替換為您的 Google Apps Script Web App URL
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz_YOUR_SCRIPT_ID/exec"; 
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1RkTNjEyGSry_IL0jC344dBqoXOZoLH7aCWaVeWym3Fk/gviz/tq?tqx=out:csv&sheet=RawData";
         
@@ -203,20 +202,19 @@
         let myChartInstance = null;
         let globalChartInstance = null;
 
-        // 初始化
         document.addEventListener('DOMContentLoaded', () => {
             initAmountButtons();
             setDefaultDate();
-            loadMyStats(); // 預先加載本地數據
+            loadMyStats();
         });
 
-        // 預設日期為今天
         function setDefaultDate() {
             const today = new Date();
-            document.getElementById('date-input').value = today.toISOString().split('T')[0];
+            // 處理時區問題，確保顯示本地日期
+            const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+            document.getElementById('date-input').value = localDate;
         }
 
-        // 初始化面額按鈕
         function initAmountButtons() {
             const container = document.getElementById('amount-container');
             AMOUNTS.forEach(amt => {
@@ -232,12 +230,10 @@
         function toggleAmount(amt, btnElement) {
             const index = selectedAmounts.indexOf(amt);
             if (index > -1) {
-                // 取消選中
                 selectedAmounts.splice(index, 1);
                 btnElement.classList.remove('bg-secondary', 'text-white', 'border-secondary');
                 btnElement.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
             } else {
-                // 選中 (允許重複面額，這裡設計為點擊選中/取消，若要同面額多次需改成計數器，此處依需求為多選)
                 selectedAmounts.push(amt);
                 btnElement.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
                 btnElement.classList.add('bg-secondary', 'text-white', 'border-secondary');
@@ -261,47 +257,54 @@
             setTimeout(() => toast.classList.add('opacity-0'), 3000);
         }
 
-        // --- 儲存邏輯 ---
+        // --- 儲存與上傳邏輯 ---
         function saveRecord(type) {
             if (selectedAmounts.length === 0) {
                 showToast('請至少選擇一個抽獎面額！', true);
                 return;
             }
 
-            const recordData = {
-                timestamp: new Date().toISOString(),
-                week: document.getElementById('week-select').value,
-                day: document.getElementById('day-select').value,
-                date: document.getElementById('date-input').value,
-                payment: document.getElementById('payment-select').value,
-                amounts: selectedAmounts
+            // 組合符合 Google Sheet 欄位的資料
+            const dateVal = document.getElementById('date-input').value;
+            const weekVal = document.getElementById('week-select').value;
+            const dayVal = document.getElementById('day-select').value;
+            
+            // 格式化為：2026-04-10 第1週 周五
+            const combinedDate = `${dateVal} 第${weekVal}週 ${dayVal}`;
+            const paymentSystem = document.getElementById('payment-select').value;
+            
+            // 取得本地時間字串作為上傳時間
+            const now = new Date();
+            const uploadTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().replace('T', ' ').substring(0, 19);
+
+            const baseRecord = {
+                draw_date: combinedDate,
+                payment: paymentSystem,
+                upload_time: uploadTime
             };
 
             if (type === 'local') {
-                saveToLocal(recordData);
+                saveToLocal(baseRecord, selectedAmounts);
                 showToast('已成功儲存至手機！');
                 resetForm();
             } else if (type === 'cloud') {
-                saveToLocal(recordData); // 雲端上傳也同時存本地
-                uploadToCloud(recordData);
+                saveToLocal(baseRecord, selectedAmounts);
+                uploadToCloud(baseRecord, selectedAmounts);
             }
         }
 
-        function saveToLocal(data) {
+        function saveToLocal(baseRecord, amounts) {
             let records = JSON.parse(localStorage.getItem('macau_rewards_2026') || '[]');
-            // 展開 amounts 陣列，讓每一次抽獎獨立成一筆記錄方便統計
-            data.amounts.forEach(amt => {
+            amounts.forEach(amt => {
                 records.push({
-                    timestamp: data.timestamp,
-                    week: data.week,
-                    day: data.day,
-                    date: data.date,
-                    payment: data.payment,
-                    amount: amt
+                    draw_date: baseRecord.draw_date,
+                    payment: baseRecord.payment,
+                    amount: amt,
+                    upload_time: baseRecord.upload_time
                 });
             });
             localStorage.setItem('macau_rewards_2026', JSON.stringify(records));
-            loadMyStats(); // 更新統計
+            loadMyStats();
         }
 
         function clearLocalData() {
@@ -312,21 +315,17 @@
             }
         }
 
-        // --- 解決 CORS 的上傳邏輯 ---
-        function uploadToCloud(data) {
+        function uploadToCloud(baseRecord, amounts) {
             showToast('上傳中...');
             
-            // 將資料轉換為平坦的陣列，方便 GAS 寫入多行
-            const payload = data.amounts.map(amt => ({
-                timestamp: data.timestamp,
-                week: data.week,
-                day: data.day,
-                date: data.date,
-                payment: data.payment,
-                amount: amt
+            // 建立符合 GAS 後端 4 欄位的 Payload
+            const payload = amounts.map(amt => ({
+                draw_date: baseRecord.draw_date,
+                payment: baseRecord.payment,
+                amount: amt,
+                upload_time: baseRecord.upload_time
             }));
 
-            // 關鍵：使用 mode: 'no-cors' 和 text/plain 避免 Preflight 請求失敗
             fetch(GAS_WEB_APP_URL, {
                 method: 'POST',
                 mode: 'no-cors', 
@@ -336,7 +335,6 @@
                 body: JSON.stringify(payload)
             })
             .then(() => {
-                // no-cors 模式下無法讀取 response，只要沒拋出網路錯誤就視為成功
                 showToast('上傳成功！感謝貢獻數據。');
                 resetForm();
             })
@@ -351,18 +349,18 @@
             const records = JSON.parse(localStorage.getItem('macau_rewards_2026') || '[]');
             
             const totalDraws = records.length;
-            const totalAmount = records.reduce((sum, r) => sum + r.amount, 0);
-            const winDraws = records.filter(r => r.amount > 0).length;
+            const totalAmount = records.reduce((sum, r) => sum + parseInt(r.amount), 0);
+            const winDraws = records.filter(r => parseInt(r.amount) > 0).length;
             const winRate = totalDraws === 0 ? 0 : Math.round((winDraws / totalDraws) * 100);
 
             document.getElementById('my-total-draws').innerText = totalDraws;
             document.getElementById('my-total-amount').innerText = totalAmount + ' 元';
             document.getElementById('my-win-rate').innerText = winRate + '%';
 
-            // 統計各面額次數
             const amountCounts = {0:0, 10:0, 20:0, 50:0, 100:0, 200:0};
             records.forEach(r => {
-                if(amountCounts[r.amount] !== undefined) amountCounts[r.amount]++;
+                const amt = parseInt(r.amount);
+                if(amountCounts[amt] !== undefined) amountCounts[amt]++;
             });
 
             renderMyChart(amountCounts);
@@ -379,9 +377,7 @@
                     datasets: [{
                         label: '獲得次數',
                         data: [data[0], data[10], data[20], data[50], data[100], data[200]],
-                        backgroundColor: [
-                            '#94a3b8', '#60a5fa', '#34d399', '#fbbf24', '#f97316', '#ef4444'
-                        ],
+                        backgroundColor: ['#94a3b8', '#60a5fa', '#34d399', '#fbbf24', '#f97316', '#ef4444'],
                         borderRadius: 4
                     }]
                 },
@@ -399,7 +395,7 @@
             
             Papa.parse(GOOGLE_SHEET_CSV_URL, {
                 download: true,
-                header: true,
+                header: true, // 會自動把第一列當作 key (例如 row['抽獎面額'])
                 complete: function(results) {
                     processGlobalData(results.data);
                 },
@@ -412,21 +408,23 @@
         }
 
         function processGlobalData(data) {
-            // 過濾掉空行
-            const validData = data.filter(row => row.amount !== undefined && row.amount !== "");
+            // 過濾掉沒有面額的空行
+            const validData = data.filter(row => row['抽獎面額'] !== undefined && row['抽獎面額'] !== "");
             const totalSamples = validData.length;
             document.getElementById('global-total-samples').innerText = totalSamples;
 
             if (totalSamples === 0) return;
 
-            // 統計各面額總計
             const amountCounts = {0:0, 10:0, 20:0, 50:0, 100:0, 200:0};
-            // 統計每週數據用於堆疊圖
             const weeklyData = {};
 
             validData.forEach(row => {
-                const amt = parseInt(row.amount);
-                const week = row.week || '未知';
+                const amt = parseInt(row['抽獎面額']);
+                const dateStr = row['抽獎日期'] || '';
+                
+                // 從 "2026-04-10 第1週 周五" 中提取週數
+                const weekMatch = dateStr.match(/第(\d+)週/);
+                const week = weekMatch ? weekMatch[1] : '未知';
                 
                 if (amountCounts[amt] !== undefined) amountCounts[amt]++;
                 
@@ -460,8 +458,10 @@
             const ctx = document.getElementById('globalChart').getContext('2d');
             if (globalChartInstance) globalChartInstance.destroy();
 
-            // 排序週數 (假設格式為數字或 "1", "2")
-            const weeks = Object.keys(weeklyData).sort((a, b) => parseInt(a) - parseInt(b));
+            // 排除 '未知' 並依數字排序週數
+            const weeks = Object.keys(weeklyData)
+                .filter(w => w !== '未知')
+                .sort((a, b) => parseInt(a) - parseInt(b));
             
             const datasets = AMOUNTS.map((amt, index) => {
                 const colors = ['#94a3b8', '#60a5fa', '#34d399', '#fbbf24', '#f97316', '#ef4444'];
@@ -493,25 +493,21 @@
 
         // --- 導航切換 ---
         function switchTab(tabId) {
-            // 隱藏所有視圖
             document.getElementById('view-record').classList.add('hidden');
             document.getElementById('view-stats').classList.add('hidden');
             document.getElementById('view-global').classList.add('hidden');
             
-            // 重置導航樣式
             ['record', 'stats', 'global'].forEach(id => {
                 const nav = document.getElementById(`nav-${id}`);
                 nav.classList.remove('text-secondary');
                 nav.classList.add('text-slate-400');
             });
 
-            // 顯示目標視圖
             document.getElementById(`view-${tabId}`).classList.remove('hidden');
             const activeNav = document.getElementById(`nav-${tabId}`);
             activeNav.classList.remove('text-slate-400');
             activeNav.classList.add('text-secondary');
 
-            // 觸發特定視圖的資料加載
             if (tabId === 'stats') loadMyStats();
             if (tabId === 'global') loadGlobalData();
         }
