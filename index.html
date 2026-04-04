@@ -224,14 +224,19 @@
       return match ? parseInt(match[1]) : null;
     }
 
-    // ============== 修正後的格式化函式（我的抽獎專用） ==============
+    // ============== 最終修正版格式化函式（處理「周」與「週」混用） ==============
     function formatMyRecordDate(dateStr) {
-      const parts = dateStr.split(' ');
+      const parts = dateStr.trim().split(/\s+/);
       const datePart = parts[0];
       const [ , monthStr, dayStr ] = datePart.split('-');
       const monthDay = `${parseInt(monthStr)}/${parseInt(dayStr)}`;
-      const weekNum = parts[1].replace('第', '').replace('周', '');
-      let day = parts[2].replace('周', '');
+
+      // 清理週數（支援「第1周」或「第1週」）
+      let weekNum = (parts[1] || '').replace(/第/, '').replace(/[周週]/g, '');
+
+      // 清理星期（支援「周五」或「週五」）
+      let day = (parts[2] || '').replace(/[周週]/g, '');
+
       return `第${weekNum}周 ${monthDay} (${day})`;
     }
 
@@ -610,7 +615,6 @@
         </div>
       `;
 
-      // ============== 修正重點：三張交叉分析表改成逐日顯示 ==============
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
