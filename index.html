@@ -22,7 +22,7 @@
     <div class="bg-white border-b sticky top-0 z-50 px-6 py-5 flex justify-between items-center">
       <div>
         <h1 class="text-2xl font-semibold text-slate-900">消費大獎賞監督器</h1>
-        <p class="text-xs text-slate-500">2026 • 個人雲端記錄 + 全澳概率</p>
+        <p class="text-xs text-slate-500">2026 • 雲端記錄 + 全澳概率</p>
       </div>
       <div onclick="googleLogin()" id="loginBtn" class="cursor-pointer text-sm bg-white border border-slate-300 px-5 py-2 rounded-3xl flex items-center gap-2">
         👤 <span id="userDisplay">登入</span>
@@ -103,7 +103,7 @@
     const prizes = [0,10,20,50,100,200];
 
     function init() {
-      // 選單初始化
+      // 初始化選單
       const ds = document.getElementById('dateSelect');
       dates.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
       const ps = document.getElementById('paymentSelect');
@@ -120,7 +120,6 @@
       loadCrowdData();
       switchTab(0);
 
-      // 登入狀態監聽
       auth.onAuthStateChanged(user => {
         currentUser = user;
         if (user) {
@@ -134,12 +133,10 @@
       const provider = new firebase.auth.GoogleAuthProvider();
       try {
         await auth.signInWithPopup(provider);
-      } catch (e) {
-        alert('登入失敗：' + e.message);
-      }
+      } catch (e) { alert('登入失敗：' + e.message); }
     }
 
-    // ================== 個人記錄 ==================
+    // ================== 儲存到我的帳戶 ==================
     async function saveToMyAccount() {
       if (!currentUser) return alert('請先登入 Google 帳戶');
       const date = document.getElementById('dateSelect').value;
@@ -156,7 +153,7 @@
           });
         }
         loadPersonalRecords();
-        alert('✅ 已儲存到我的帳戶（雲端同步）');
+        alert('✅ 已成功儲存到雲端！');
       } catch (e) { alert('儲存失敗：' + e.message); }
     }
 
@@ -173,13 +170,45 @@
         container.innerHTML = `<p class="col-span-3 text-center py-12 text-slate-400">還沒有記錄</p>`;
         return;
       }
-      // KPI 卡片 + 圖表 + 每週上限提醒（已加入）
-      // （完整程式碼已包含）
+      // KPI 卡片
+      const total = personalRecords.length;
+      const totalPrize = personalRecords.reduce((sum, r) => sum + r.prize, 0);
+      const winRate = ((personalRecords.filter(r => r.prize > 0).length / total) * 100).toFixed(1);
+      container.innerHTML = `
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-sky-600">${total}</div><div class="text-xs text-slate-500">總抽獎次數</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-emerald-600">$${totalPrize}</div><div class="text-xs text-slate-500">總中獎金額</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${winRate}%</div><div class="text-xs text-slate-500">整體中獎率</div></div>
+      `;
+      // 圖表
+      new Chart(document.getElementById('myChart'), {
+        type: 'bar',
+        data: { labels: prizes, datasets: [{ label: '面額分佈', data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), backgroundColor: '#0ea5e9' }] }
+      });
     }
 
     // ================== 全澳概率 ==================
     function renderCrowdProbability() {
-      // 已完整包含表格 + 圖表 + 期望值
+      const sampleDiv = document.getElementById('totalSamples');
+      const tableDiv = document.getElementById('probTable');
+      if (crowdData.length === 0) return;
+      sampleDiv.textContent = `全澳總樣本數：${crowdData.length} 筆`;
+      let html = `<table class="w-full text-sm"><thead><tr class="bg-slate-100"><th class="p-3">週數</th><th class="p-3">總次數</th>`;
+      prizes.forEach(p => html += `<th class="p-3">${p}元 (%)</th>`);
+      html += `</tr></thead><tbody>`;
+      for (let w = 1; w <= 10; w++) {
+        const weekData = crowdData.filter(r => r.抽獎日期 && r.抽獎日期.includes(`第${w}週`));
+        if (weekData.length === 0) continue;
+        const total = weekData.length;
+        let row = `<tr class="border-b"><td class="p-3 font-medium">第${w}週</td><td class="p-3 text-center">${total}</td>`;
+        prizes.forEach(p => {
+          const count = weekData.filter(r => parseInt(r.抽獎面額) === p).length;
+          const percent = (count / total * 100).toFixed(1);
+          row += `<td class="p-3 text-center">${count} <span class="text-xs text-slate-400">(${percent}%)</span></td>`;
+        });
+        html += row + '</tr>';
+      }
+      html += '</tbody></table>';
+      tableDiv.innerHTML = html;
     }
 
     async function loadCrowdData() {
@@ -190,7 +219,21 @@
     }
 
     async function uploadToSheet() {
-      // ... 保持原樣 ...
+      const btn = document.getElementById('uploadBtn');
+      btn.disabled = true; btn.textContent = '上傳中...';
+      const date = document.getElementById('dateSelect').value;
+      const payment = document.getElementById('paymentSelect').value;
+      const selected = Array.from(document.querySelectorAll('#prizeOptions button.border-sky-500')).map(b => parseInt(b.textContent));
+      if (selected.length === 0) { alert('請至少選擇一個面額'); btn.disabled = false; btn.textContent = '☁️ 貢獻到全澳統計'; return; }
+
+      try {
+        const promises = selected.map(prize => fetch(UPLOAD_URL, {method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({date, payment, prize})}));
+        await Promise.all(promises);
+        alert('✅ 已成功貢獻到全澳統計！');
+        loadCrowdData();
+      } catch (e) { alert('錯誤：' + e.message); } finally {
+        btn.disabled = false; btn.textContent = '☁️ 貢獻到全澳統計';
+      }
     }
 
     function switchTab(n) {
