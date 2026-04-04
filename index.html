@@ -24,6 +24,7 @@
     .percent-cell { font-weight: 600; color: #10b981; }
     .highlight-card { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
     .warning-banner { background: #fefce8; border: 2px solid #ca8a04; color: #854d0e; }
+    .chart-container { position: relative; height: 280px; margin-bottom: 20px; }
   </style>
 </head>
 <body class="bg-[#f8fafc] text-[#1e2937] min-h-screen pb-20">
@@ -79,16 +80,36 @@
       </button>
     </div>
 
-    <!-- Page 2: 我的抽獎 -->
+    <!-- Page 2: 我的抽獎（已優化） -->
     <div id="page1" class="p-6 hidden">
       <h2 class="text-2xl font-semibold mb-6">我的抽獎</h2>
+      
+      <!-- 基本統計卡片 -->
       <div id="myStats" class="grid grid-cols-3 gap-4"></div>
-      <canvas id="myChart" class="mt-8"></canvas>
+
+      <!-- 原有面額分布 -->
+      <div class="mt-8">
+        <h3 class="font-semibold mb-3">面額分布</h3>
+        <div class="chart-container"><canvas id="myChart"></canvas></div>
+      </div>
+
+      <!-- 新增：支付系統中獎分析 -->
+      <div class="mt-12">
+        <h3 class="font-semibold mb-3">各支付系統中獎情況</h3>
+        <div class="chart-container"><canvas id="paymentChart"></canvas></div>
+      </div>
+
+      <!-- 新增：周別中獎趨勢 -->
+      <div class="mt-12">
+        <h3 class="font-semibold mb-3">各周中獎趨勢</h3>
+        <div class="chart-container"><canvas id="weeklyChart"></canvas></div>
+      </div>
+
+      <!-- 歷史記錄 -->
       <div class="mt-12">
         <h3 class="text-xl font-semibold mb-4">我的歷史記錄</h3>
         <div id="historyList" class="space-y-3"></div>
       </div>
-      <div id="weeklyWarning" class="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm hidden"></div>
     </div>
 
     <!-- Page 3: 全澳運勢 -->
@@ -412,6 +433,63 @@
       renderCrowdProbability();
     }
 
+    // ============== 支付系統中獎分析圖 ==============
+    function renderPaymentChart() {
+      if (window.paymentChart && typeof window.paymentChart.destroy === 'function') window.paymentChart.destroy();
+
+      const paymentData = {};
+      payments.forEach(p => paymentData[p] = {count: 0, amount: 0});
+
+      personalRecords.forEach(r => {
+        if (paymentData[r.payment]) {
+          paymentData[r.payment].count++;
+          paymentData[r.payment].amount += r.prize || 0;
+        }
+      });
+
+      window.paymentChart = new Chart(document.getElementById('paymentChart'), {
+        type: 'bar',
+        data: {
+          labels: payments.map(p => p.slice(0,8)),
+          datasets: [
+            { label: '中獎次數', data: payments.map(p => paymentData[p].count), backgroundColor: '#10b981' },
+            { label: '中獎金額 (元)', data: payments.map(p => paymentData[p].amount), backgroundColor: '#3b82f6' }
+          ]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    // ============== 周別中獎趨勢圖 ==============
+    function renderWeeklyChart() {
+      if (window.weeklyChart && typeof window.weeklyChart.destroy === 'function') window.weeklyChart.destroy();
+
+      const weeklyData = {};
+      personalRecords.forEach(r => {
+        const week = getWeekNumber(r.date);
+        if (!weeklyData[week]) weeklyData[week] = {count: 0, amount: 0};
+        weeklyData[week].count++;
+        weeklyData[week].amount += r.prize || 0;
+      });
+
+      const sortedWeeks = Object.keys(weeklyData).sort((a,b)=>parseInt(a)-parseInt(b));
+      const labels = sortedWeeks.map(w => `第${w}周`);
+      const countData = sortedWeeks.map(w => weeklyData[w].count);
+      const amountData = sortedWeeks.map(w => weeklyData[w].amount);
+
+      window.weeklyChart = new Chart(document.getElementById('weeklyChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '中獎次數', data: countData, borderColor: '#10b981', tension: 0.4 },
+            { label: '中獎金額 (元)', data: amountData, borderColor: '#3b82f6', tension: 0.4 }
+          ]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
     function renderMyStats() {
       if (window.myChart && typeof window.myChart.destroy === 'function') window.myChart.destroy();
 
@@ -442,6 +520,8 @@
         } 
       });
 
+      renderPaymentChart();
+      renderWeeklyChart();
       renderHistoryList();
     }
 
@@ -609,12 +689,11 @@
         </div>
       `;
 
-      // ============== 修正重點：精準逐日匹配 + 全部資料計算 ==============
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
       dates.forEach(d => {
-        const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);  // ← 精準比對日期部分
+        const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
         const dayTotal = dayData.length;
         paymentHTML += `<tr><td class="font-medium text-left">${formatMyRecordDate(d)}</td>`;
         payments.forEach(pay => {
