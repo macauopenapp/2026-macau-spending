@@ -15,17 +15,20 @@
 <body class="bg-slate-50 text-slate-700 min-h-screen pb-20">
   <div class="max-w-2xl mx-auto">
 
+    <!-- 標題 -->
     <div class="bg-white border-b sticky top-0 z-50 px-6 py-5">
       <h1 class="text-2xl font-semibold text-slate-900">消費大獎賞監督器</h1>
-      <p class="text-xs text-slate-500">2026 • 一站式上傳</p>
+      <p class="text-xs text-slate-500">2026 • 一站式記錄 + 全澳概率</p>
     </div>
 
+    <!-- 底部導航 -->
     <div class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t flex z-50">
       <button onclick="switchTab(0)" id="tab0" class="flex-1 py-4 border-b-2 border-sky-600 text-sky-600 font-medium">記錄</button>
       <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4">我的統計</button>
       <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4">全澳概率</button>
     </div>
 
+    <!-- Page 1: 記錄 -->
     <div id="page0" class="p-6">
       <div class="card rounded-3xl p-6">
         <h2 class="text-xl font-semibold mb-6">新增抽獎記錄</h2>
@@ -45,15 +48,24 @@
         </div>
       </div>
 
-      <button onclick="saveLocal()" class="mt-8 w-full bg-slate-800 text-white py-5 rounded-3xl text-lg font-semibold">💾 只存手機</button>
+      <button onclick="saveLocal()" class="mt-8 w-full bg-slate-800 text-white py-5 rounded-3xl text-lg font-semibold">💾 只存手機（個人用）</button>
       <button onclick="uploadToSheet()" class="mt-3 w-full bg-emerald-600 text-white py-5 rounded-3xl text-lg font-semibold" id="uploadBtn">☁️ 上傳到全澳統計</button>
     </div>
 
+    <!-- Page 2: 我的統計 -->
+    <div id="page1" class="p-6 hidden">
+      <h2 class="text-xl font-semibold mb-6">我的統計</h2>
+      <div id="myStats" class="grid grid-cols-3 gap-4"></div>
+      <canvas id="myChart" class="mt-8"></canvas>
+    </div>
+
+    <!-- Page 3: 全澳概率 -->
     <div id="page2" class="p-6 hidden">
       <h2 class="text-xl font-semibold mb-6">全澳概率統計</h2>
       <div id="totalSamples" class="bg-white rounded-3xl p-5 text-center mb-6 font-medium"></div>
       <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
       <canvas id="probChart" class="mt-8"></canvas>
+      <div id="noDataTip" class="hidden text-center text-slate-400 py-12">尚無數據，請先上傳資料</div>
     </div>
   </div>
 
@@ -69,10 +81,23 @@
     const prizes = [0,10,20,50,100,200];
 
     function init() {
+      // 日期選單
       const ds = document.getElementById('dateSelect');
-      dates.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
+      dates.forEach(d => {
+        const o = document.createElement('option');
+        o.value = d; o.textContent = d;
+        ds.appendChild(o);
+      });
+
+      // 支付系統
       const ps = document.getElementById('paymentSelect');
-      payments.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; ps.appendChild(o); });
+      payments.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p; o.textContent = p;
+        ps.appendChild(o);
+      });
+
+      // 面額按鈕
       const po = document.getElementById('prizeOptions');
       prizes.forEach(p => {
         const btn = document.createElement('button');
@@ -83,14 +108,30 @@
       });
 
       loadCrowdData();
+      renderMyStats();
       switchTab(0);
     }
 
     async function loadCrowdData() {
-      Papa.parse(CSV_URL, {download: true, header: true, complete: (res) => {
-        crowdData = res.data.filter(r => r.抽獎日期);
-        renderCrowdProbability();
-      }});
+      Papa.parse(CSV_URL, {
+        download: true,
+        header: true,
+        complete: (res) => {
+          crowdData = res.data.filter(r => r.抽獎日期);
+          renderCrowdProbability();
+        }
+      });
+    }
+
+    function saveLocal() {
+      const date = document.getElementById('dateSelect').value;
+      const payment = document.getElementById('paymentSelect').value;
+      const selected = Array.from(document.querySelectorAll('#prizeOptions button.border-sky-500')).map(b => parseInt(b.textContent));
+      if (selected.length === 0) return alert('請至少選擇一個面額');
+      selected.forEach(p => personalRecords.push({date, payment, prize: p}));
+      localStorage.setItem('spendingRecords', JSON.stringify(personalRecords));
+      alert('✅ 已存入手機');
+      renderMyStats();
     }
 
     async function uploadToSheet() {
@@ -118,42 +159,76 @@
           })
         );
 
-        const responses = await Promise.all(promises);
-        console.log("後端回應:", responses);
-
-        // 即使後端成功，我們也視為成功（因為你說 Sheet 已寫入）
+        const results = await Promise.all(promises);
         alert('✅ 上傳成功！資料已寫入 Google Sheet');
-        loadCrowdData();   // 刷新全澳統計
+        loadCrowdData();
       } catch (e) {
-        console.error("Fetch 錯誤:", e);
-        alert('上傳失敗\n\n錯誤詳情：\n' + e.message + '\n\n但你說 Sheet 有寫入資料，這可能是瀏覽器 CORS 問題。\n\n請把這個完整錯誤貼給我，我會再優化。');
+        console.error(e);
+        alert('上傳失敗\n錯誤：' + e.message);
       } finally {
         btn.disabled = false;
         btn.textContent = '☁️ 上傳到全澳統計';
       }
     }
 
-    function saveLocal() {
-      // ... (同之前)
-      alert('已存入手機');
+    function renderMyStats() {
+      const container = document.getElementById('myStats');
+      if (personalRecords.length === 0) {
+        container.innerHTML = `<p class="col-span-3 text-center py-12 text-slate-400">還沒有記錄</p>`;
+        return;
+      }
+      new Chart(document.getElementById('myChart'), {
+        type: 'bar',
+        data: {
+          labels: prizes,
+          datasets: [{
+            label: '面額分佈',
+            data: prizes.map(p => personalRecords.filter(r => r.prize === p).length),
+            backgroundColor: '#0ea5e9'
+          }]
+        }
+      });
     }
 
     function renderCrowdProbability() {
       const sampleDiv = document.getElementById('totalSamples');
       const tableDiv = document.getElementById('probTable');
-      if (crowdData.length === 0) return;
+      const tip = document.getElementById('noDataTip');
+
+      if (crowdData.length === 0) {
+        tip.classList.remove('hidden');
+        return;
+      }
+
       sampleDiv.textContent = `全澳總樣本數：${crowdData.length} 筆`;
-      // 表格生成程式碼（已簡化）
-      let html = `<table class="w-full"><thead><tr class="bg-slate-100"><th class="p-3">週數</th><th class="p-3">總次數</th>`;
-      prizes.forEach(p => html += `<th class="p-3">${p}元</th>`);
-      html += '</tr></thead><tbody>';
-      // ... 省略詳細表格生成（實際已完整）
+
+      let html = `<table class="w-full text-sm"><thead><tr class="bg-slate-100"><th class="p-3">週數</th><th class="p-3">總次數</th>`;
+      prizes.forEach(p => html += `<th class="p-3">${p}元 (%)</th>`);
+      html += `</tr></thead><tbody>`;
+
+      for (let w = 1; w <= 10; w++) {
+        const weekData = crowdData.filter(r => r.抽獎日期 && r.抽獎日期.includes(`第${w}週`));
+        if (weekData.length === 0) continue;
+        const total = weekData.length;
+        let row = `<tr class="border-b"><td class="p-3 font-medium">第${w}週</td><td class="p-3 text-center">${total}</td>`;
+        prizes.forEach(p => {
+          const count = weekData.filter(r => parseInt(r.抽獎面額) === p).length;
+          const percent = total > 0 ? (count / total * 100).toFixed(1) : 0;
+          row += `<td class="p-3 text-center">${count} <span class="text-xs text-slate-400">(${percent}%)</span></td>`;
+        });
+        html += row + '</tr>';
+      }
+      html += '</tbody></table>';
       tableDiv.innerHTML = html;
     }
 
     function switchTab(n) {
-      for (let i = 0; i < 3; i++) document.getElementById('page' + i).classList.add('hidden');
+      for (let i = 0; i < 3; i++) {
+        document.getElementById('page' + i).classList.add('hidden');
+        document.getElementById('tab' + i).classList.remove('border-b-2', 'border-sky-600', 'text-sky-600');
+      }
       document.getElementById('page' + n).classList.remove('hidden');
+      document.getElementById('tab' + n).classList.add('border-b-2', 'border-sky-600', 'text-sky-600');
     }
 
     window.onload = init;
