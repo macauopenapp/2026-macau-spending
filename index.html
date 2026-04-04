@@ -12,24 +12,26 @@
   <style>
     body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; font-size: 16px; }
     .card { background: white; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); border-radius: 24px; }
-    .chip { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-    .chip.selected { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; transform: scale(1.05); box-shadow: 0 0 0 4px rgba(16,185,129,0.3); }
-    .prize-card { height: 108px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .prize-card.selected { background: linear-gradient(135deg, #10b981, #f59e0b); color: white; box-shadow: 0 0 0 4px rgba(16,185,129,0.3); transform: scale(1.08); }
+    .chip { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); padding: 16px 20px; min-width: 140px; }
+    .chip.selected { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; transform: scale(1.04); box-shadow: 0 0 0 4px rgba(16,185,129,0.3); }
+    .prize-card { height: 118px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .prize-card.selected { background: linear-gradient(135deg, #10b981, #f59e0b); color: white; box-shadow: 0 0 0 5px rgba(16,185,129,0.3); transform: scale(1.06); }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }
     .toast { animation: slideUp 0.3s ease forwards; }
-    @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .highlight-card { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; }
-    th, td { font-size: 14.5px; padding: 12px 8px; }
+    th, td { font-size: 14px; padding: 12px 8px; }
     .percent-cell { font-weight: 700; color: #10b981; }
-    .chart-container { position: relative; height: 280px; margin-bottom: 20px; }
-    #remainingAmount { font-size: 42px; line-height: 1; font-weight: 700; letter-spacing: -0.05em; font-family: ui-monospace, monospace; }
+    .chart-container { position: relative; height: 270px; margin-bottom: 24px; }
+    #remainingAmount { font-size: 42px; line-height: 1; font-weight: 700; letter-spacing: -0.04em; font-family: ui-monospace, monospace; }
+    #dateChips, #paymentChips { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    #dateChips::-webkit-scrollbar, #paymentChips::-webkit-scrollbar { display: none; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
 
   <!-- Header -->
-  <div class="bg-white border-b sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
+  <div class="bg-white border-b sticky top-0 z-50 px-5 py-4 flex justify-between items-center shadow-sm">
     <div>
       <h1 class="text-3xl font-bold text-emerald-700">2026 社區消費大獎賞</h1>
       <p class="text-lg font-semibold text-slate-700">📊 全澳與個人抽獎運勢追蹤系統</p>
@@ -41,7 +43,7 @@
   </div>
 
   <!-- Privacy -->
-  <div class="px-6 py-3 bg-emerald-50 text-xs text-emerald-700 flex items-center gap-2 border-b">
+  <div class="px-5 py-3 bg-emerald-50 text-xs text-emerald-700 flex items-center gap-2 border-b">
     🔒 您的資料僅用於全澳抽獎統計分析，絕不作任何商業用途或外洩。
   </div>
 
@@ -53,28 +55,28 @@
   </div>
 
   <!-- Floating Action Button -->
-  <button onclick="switchTab(0)" class="fixed bottom-20 right-6 w-14 h-14 bg-gradient-to-br from-emerald-600 to-teal-500 text-white rounded-3xl shadow-2xl flex items-center justify-center text-3xl z-50 active:scale-95 transition-transform">+</button>
+  <button onclick="switchTab(0)" class="fixed bottom-20 right-5 w-14 h-14 bg-gradient-to-br from-emerald-600 to-teal-500 text-white rounded-3xl shadow-2xl flex items-center justify-center text-3xl z-50 active:scale-95 transition-transform">+</button>
 
   <!-- Toast -->
   <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-3xl shadow-xl text-sm flex items-center gap-3 toast">
     <span id="toastText"></span>
   </div>
 
-  <!-- Page 0: 快速記錄 -->
-  <div id="page0" class="p-6">
+  <!-- Page 0: 快速記錄（行動端最佳化） -->
+  <div id="page0" class="p-5">
     <div class="card p-6">
       <h2 class="text-2xl font-bold mb-8 text-center">新增抽獎記錄</h2>
 
-      <!-- Date Chips（已修正：目前測試階段所有日期都可選） -->
+      <!-- Date Chips -->
       <div class="mb-8">
         <label class="block text-sm font-medium mb-3 text-slate-600">抽獎日期</label>
-        <div id="dateChips" class="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory"></div>
+        <div id="dateChips" class="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory"></div>
       </div>
 
       <!-- Payment Chips -->
       <div class="mb-8">
         <label class="block text-sm font-medium mb-3 text-slate-600">支付系統</label>
-        <div id="paymentChips" class="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory"></div>
+        <div id="paymentChips" class="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory"></div>
       </div>
 
       <!-- Prize Selection -->
@@ -83,7 +85,7 @@
           <label class="text-sm font-medium text-slate-600">抽獎面額（最多選 3 次）</label>
           <div id="selectionCounter" class="text-emerald-600 font-bold text-lg">已選 0 / 3</div>
         </div>
-        <div id="prizeOptions" class="grid grid-cols-3 gap-4"></div>
+        <div id="prizeOptions" class="grid grid-cols-3 gap-3"></div>
       </div>
 
       <!-- Instant Preview -->
@@ -94,13 +96,13 @@
     </div>
 
     <button onclick="saveAndContribute()" id="mainBtn"
-            class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">
+            class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">
       💾 儲存並貢獻全澳運勢
     </button>
   </div>
 
   <!-- Page 1: 我的抽獎 -->
-  <div id="page1" class="p-6 hidden">
+  <div id="page1" class="p-5 hidden">
     <h2 class="text-2xl font-bold mb-6">我的抽獎</h2>
     <div id="myStats" class="grid grid-cols-3 gap-4"></div>
     <div class="mt-8">
@@ -122,7 +124,7 @@
   </div>
 
   <!-- Page 2: 全澳運勢 -->
-  <div id="page2" class="p-6 hidden">
+  <div id="page2" class="p-5 hidden">
     <div id="dataLimitWarning" class="warning-banner rounded-3xl p-4 mb-6 text-sm flex items-center gap-3 hidden">
       ⚠️ <strong>目前僅載入最近 10,000 筆全澳數據</strong>（活動預估總量約 10 萬筆）。統計結果為近似值。
     </div>
@@ -320,13 +322,12 @@
       setTimeout(() => canvas.remove(), 2000);
     }
 
-    // 【已修正】日期 Chips：目前測試階段全部日期都可選（不再灰掉）
     function renderDateChips() {
       const container = document.getElementById('dateChips');
       container.innerHTML = '';
       dates.forEach((d, index) => {
         const chip = document.createElement('button');
-        chip.className = `chip flex-shrink-0 px-7 py-4 rounded-3xl text-sm font-medium border border-slate-200 snap-center whitespace-nowrap`;
+        chip.className = `chip flex-shrink-0 px-8 py-5 rounded-3xl text-sm font-medium border border-slate-200 snap-center whitespace-nowrap`;
         chip.textContent = d;
         chip.onclick = () => {
           document.querySelectorAll('#dateChips .chip').forEach(el => el.classList.remove('selected'));
@@ -336,7 +337,6 @@
           updatePreview();
         };
         container.appendChild(chip);
-        // 預設選中第一個日期
         if (index === 0) {
           chip.classList.add('selected');
           selectedDate = d;
@@ -349,7 +349,7 @@
       container.innerHTML = '';
       payments.forEach(p => {
         const chip = document.createElement('button');
-        chip.className = `chip flex-shrink-0 px-8 py-4 rounded-3xl text-sm font-medium border border-slate-200 whitespace-nowrap`;
+        chip.className = `chip flex-shrink-0 px-8 py-5 rounded-3xl text-sm font-medium border border-slate-200 whitespace-nowrap`;
         chip.textContent = p;
         chip.onclick = () => {
           document.querySelectorAll('#paymentChips .chip').forEach(el => el.classList.remove('selected'));
@@ -473,8 +473,6 @@
       crowdData = snapshot.docs.map(doc => doc.data());
       renderCrowdProbability();
     }
-
-    // 其餘所有函數（renderMyStats、renderCrowdProbability、renderPaymentChart、renderWeeklyChart、renderHistoryList、deleteRecord、showEditModal、saveEdit、renderRemainingPool 等）與之前版本完全相同（為節省篇幅已省略，但完整包含在實際檔案中）
 
     function renderPaymentChart() {
       if (window.paymentChart && typeof window.paymentChart.destroy === 'function') window.paymentChart.destroy();
