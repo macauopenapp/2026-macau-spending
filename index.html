@@ -48,7 +48,7 @@
     <!-- 底部導航 -->
     <div class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t flex z-50">
       <button onclick="switchTab(0)" id="tab0" class="flex-1 py-4 border-b-2 border-emerald-600 text-emerald-600 font-semibold">快速記錄</button>
-      <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4">我的戰績</button>
+      <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4">我的抽獎</button>
       <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4">全澳運勢</button>
     </div>
 
@@ -79,9 +79,9 @@
       </button>
     </div>
 
-    <!-- Page 2: 我的戰績 -->
+    <!-- Page 2: 我的抽獎 -->
     <div id="page1" class="p-6 hidden">
-      <h2 class="text-2xl font-semibold mb-6">我的戰績</h2>
+      <h2 class="text-2xl font-semibold mb-6">我的抽獎</h2>
       <div id="myStats" class="grid grid-cols-3 gap-4"></div>
       <canvas id="myChart" class="mt-8"></canvas>
       <div class="mt-12">
@@ -224,7 +224,7 @@
       return match ? parseInt(match[1]) : null;
     }
 
-    // ============== 新增：我的戰績專用日期格式化（按您的要求） ==============
+    // ============== 新增：我的抽獎專用日期格式化（按您的要求） ==============
     function formatMyRecordDate(dateStr) {
       // 輸入示例： "2026-04-10 第1周 周五"
       // 輸出示例： "第1周 4/10 (五)"
