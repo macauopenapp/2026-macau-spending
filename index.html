@@ -10,18 +10,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; font-size: 17px; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; font-size: 16px; }
     .card { background: white; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); border-radius: 24px; }
     .chip { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
     .chip.selected { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; transform: scale(1.05); box-shadow: 0 0 0 4px rgba(16,185,129,0.3); }
     .chip.disabled { opacity: 0.4; pointer-events: none; }
-    .prize-card { height: 110px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .prize-card { height: 108px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .prize-card.selected { background: linear-gradient(135deg, #10b981, #f59e0b); color: white; box-shadow: 0 0 0 4px rgba(16,185,129,0.3); transform: scale(1.08); }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }
     .toast { animation: slideUp 0.3s ease forwards; }
     @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .highlight-card { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; }
-    th, td { font-size: 15px; padding: 12px 8px; }
+    th, td { font-size: 14.5px; padding: 12px 8px; }
     .percent-cell { font-weight: 700; color: #10b981; }
     .chart-container { position: relative; height: 280px; margin-bottom: 20px; }
   </style>
@@ -60,10 +60,10 @@
     <span id="toastText"></span>
   </div>
 
-  <!-- Page 0: 快速記錄（優化版） -->
+  <!-- Page 0: 快速記錄 -->
   <div id="page0" class="p-6">
     <div class="card p-6">
-      <h2 class="text-3xl font-bold mb-8 text-center">新增抽獎記錄</h2>
+      <h2 class="text-2xl font-bold mb-8 text-center">新增抽獎記錄</h2>
 
       <!-- Date Chips -->
       <div class="mb-8">
@@ -89,19 +89,19 @@
       <!-- Instant Preview -->
       <div id="previewCard" class="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-5 hidden">
         <div class="text-sm text-slate-600 mb-2">本筆預覽</div>
-        <div id="previewContent" class="flex justify-between text-lg font-medium"></div>
+        <div id="previewContent" class="flex justify-between text-base font-medium"></div>
       </div>
     </div>
 
     <button onclick="saveAndContribute()" id="mainBtn"
-            class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white py-7 rounded-3xl text-2xl font-bold shadow-2xl active:scale-95 transition-all">
+            class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">
       💾 儲存並貢獻全澳運勢
     </button>
   </div>
 
-  <!-- Page 1: 我的抽獎（保留原始結構，字體加大） -->
+  <!-- Page 1: 我的抽獎 -->
   <div id="page1" class="p-6 hidden">
-    <h2 class="text-3xl font-bold mb-6">我的抽獎</h2>
+    <h2 class="text-2xl font-bold mb-6">我的抽獎</h2>
     <div id="myStats" class="grid grid-cols-3 gap-4"></div>
     <div class="mt-8">
       <h3 class="font-semibold mb-3">面額分布</h3>
@@ -121,17 +121,17 @@
     </div>
   </div>
 
-  <!-- Page 2: 全澳運勢（保留原始結構，字體加大） -->
+  <!-- Page 2: 全澳運勢 -->
   <div id="page2" class="p-6 hidden">
     <div id="dataLimitWarning" class="warning-banner rounded-3xl p-4 mb-6 text-sm flex items-center gap-3 hidden">
       ⚠️ <strong>目前僅載入最近 10,000 筆全澳數據</strong>（活動預估總量約 10 萬筆）。統計結果為近似值。
     </div>
-    <h2 class="text-3xl font-bold mb-6">全澳運勢</h2>
+    <h2 class="text-2xl font-bold mb-6">全澳運勢</h2>
     <div id="coreStatsCard" class="highlight-card rounded-3xl p-8 mb-8 text-center text-white">
       <div class="grid grid-cols-3 gap-6">
-        <div><div class="text-xs opacity-90 mb-1">全澳總樣本</div><div id="totalSamplesBig" class="text-6xl font-bold"></div></div>
-        <div><div class="text-xs opacity-90 mb-1">整體中獎率</div><div id="winRateBig" class="text-6xl font-bold"></div></div>
-        <div><div class="text-xs opacity-90 mb-1">平均每抽金額</div><div id="avgPrizeBig" class="text-6xl font-bold"></div></div>
+        <div><div class="text-xs opacity-90 mb-1">全澳總樣本</div><div id="totalSamplesBig" class="text-5xl font-bold"></div></div>
+        <div><div class="text-xs opacity-90 mb-1">整體中獎率</div><div id="winRateBig" class="text-5xl font-bold"></div></div>
+        <div><div class="text-xs opacity-90 mb-1">平均每抽金額</div><div id="avgPrizeBig" class="text-5xl font-bold"></div></div>
       </div>
     </div>
     <div class="mb-10">
@@ -177,7 +177,7 @@
     </div>
   </div>
 
-  <!-- Edit Modal（原始保留） -->
+  <!-- Edit Modal -->
   <div id="editModal" class="modal">
     <div class="modal-content bg-white max-w-md w-full rounded-3xl p-6">
       <h3 class="text-xl font-semibold mb-6">編輯抽獎記錄</h3>
@@ -290,7 +290,6 @@
       `;
     }
 
-    // 新增：Toast & Confetti
     function showToast(msg) {
       const t = document.getElementById('toast');
       document.getElementById('toastText').textContent = msg;
@@ -324,7 +323,6 @@
       setTimeout(() => canvas.remove(), 2000);
     }
 
-    // 新增：日期 Chips（含未來日期禁用）
     function renderDateChips() {
       const container = document.getElementById('dateChips');
       container.innerHTML = '';
@@ -333,7 +331,7 @@
         const chip = document.createElement('button');
         const datePart = d.split(' ')[0];
         const isFuture = new Date(datePart) > now;
-        chip.className = `chip flex-shrink-0 px-7 py-4 rounded-3xl text-base font-medium border border-slate-200 snap-center whitespace-nowrap ${isFuture ? 'disabled' : ''}`;
+        chip.className = `chip flex-shrink-0 px-7 py-4 rounded-3xl text-sm font-medium border border-slate-200 snap-center whitespace-nowrap ${isFuture ? 'disabled' : ''}`;
         chip.textContent = d;
         if (!isFuture) {
           chip.onclick = () => {
@@ -346,7 +344,6 @@
         }
         container.appendChild(chip);
       });
-      // 預設選第一個非未來日期
       const firstAvailable = Array.from(container.children).find(c => !c.classList.contains('disabled'));
       if (firstAvailable) {
         firstAvailable.classList.add('selected');
@@ -359,7 +356,7 @@
       container.innerHTML = '';
       payments.forEach(p => {
         const chip = document.createElement('button');
-        chip.className = `chip flex-shrink-0 px-8 py-4 rounded-3xl text-base font-medium border border-slate-200 whitespace-nowrap`;
+        chip.className = `chip flex-shrink-0 px-8 py-4 rounded-3xl text-sm font-medium border border-slate-200 whitespace-nowrap`;
         chip.textContent = p;
         chip.onclick = () => {
           document.querySelectorAll('#paymentChips .chip').forEach(el => el.classList.remove('selected'));
@@ -378,7 +375,7 @@
       container.innerHTML = '';
       prizes.forEach(p => {
         const card = document.createElement('button');
-        card.className = `prize-card card flex flex-col items-center justify-center text-4xl font-bold border-2 border-slate-200 rounded-3xl`;
+        card.className = `prize-card card flex flex-col items-center justify-center text-3xl font-bold border-2 border-slate-200 rounded-3xl`;
         card.innerHTML = p === 0 ? `未中獎<br><span class="text-base">0元</span>` : `${p}<span class="text-xl">元</span>`;
         card.onclick = () => togglePrize(card, p);
         container.appendChild(card);
