@@ -3,101 +3,193 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2026消費大獎賞 診斷版</title>
+  <title>2026澳門消費大獎賞 記帳監督器</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .card { background: white; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05); }
+  </style>
 </head>
-<body class="bg-slate-50 p-6 max-w-2xl mx-auto">
-  <h1 class="text-2xl font-bold mb-8">一站式上傳診斷版</h1>
+<body class="bg-slate-50 text-slate-700 min-h-screen pb-20">
+  <div class="max-w-2xl mx-auto">
 
-  <div class="space-y-6">
-    <div>
-      <label class="block text-sm mb-1">抽獎日期</label>
-      <select id="date" class="w-full border p-4 rounded-2xl text-lg"></select>
+    <div class="bg-white border-b sticky top-0 z-50 px-6 py-5">
+      <h1 class="text-2xl font-semibold text-slate-900">消費大獎賞監督器</h1>
+      <p class="text-xs text-slate-500">2026 • 一站式上傳</p>
     </div>
-    <div>
-      <label class="block text-sm mb-1">支付系統</label>
-      <select id="payment" class="w-full border p-4 rounded-2xl text-lg"></select>
+
+    <div class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t flex z-50">
+      <button onclick="switchTab(0)" id="tab0" class="flex-1 py-4 border-b-2 border-sky-600 text-sky-600 font-medium">記錄</button>
+      <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4">我的統計</button>
+      <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4">全澳概率</button>
     </div>
-    <div>
-      <label class="block text-sm mb-1">面額（可多選）</label>
-      <div class="grid grid-cols-3 gap-3" id="prizes"></div>
+
+    <!-- Page 1: 一站式填寫 -->
+    <div id="page0" class="p-6">
+      <div class="card rounded-3xl p-6">
+        <h2 class="text-xl font-semibold mb-6">新增抽獎記錄</h2>
+        <div class="space-y-6">
+          <div>
+            <label class="block text-xs uppercase tracking-widest text-slate-500 mb-1">抽獎日期</label>
+            <select id="dateSelect" class="w-full border border-slate-200 rounded-2xl px-5 py-4 text-base"></select>
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-widest text-slate-500 mb-1">支付系統</label>
+            <select id="paymentSelect" class="w-full border border-slate-200 rounded-2xl px-5 py-4 text-base"></select>
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-widest text-slate-500 mb-2">抽獎面額（可多選）</label>
+            <div class="grid grid-cols-3 gap-3" id="prizeOptions"></div>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="saveLocal()" class="mt-8 w-full bg-slate-800 text-white py-5 rounded-3xl text-lg font-semibold">💾 只存手機</button>
+      <button onclick="uploadToSheet()" class="mt-3 w-full bg-emerald-600 text-white py-5 rounded-3xl text-lg font-semibold">☁️ 上傳到全澳統計</button>
+    </div>
+
+    <!-- Page 2: 我的統計 -->
+    <div id="page1" class="p-6 hidden">
+      <h2 class="text-xl font-semibold mb-6">我的統計</h2>
+      <div id="myStats" class="grid grid-cols-3 gap-4"></div>
+      <canvas id="myChart" class="mt-8"></canvas>
+    </div>
+
+    <!-- Page 3: 全澳概率 -->
+    <div id="page2" class="p-6 hidden">
+      <h2 class="text-xl font-semibold mb-6">全澳概率統計</h2>
+      <div id="totalSamples" class="bg-white rounded-3xl p-5 text-center mb-6 font-medium"></div>
+      <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
+      <canvas id="probChart" class="mt-8"></canvas>
+      <div id="noDataTip" class="hidden text-center text-slate-400 py-12">尚無數據，請先上傳</div>
     </div>
   </div>
 
-  <button onclick="uploadTest()" class="mt-8 w-full bg-emerald-600 text-white py-6 rounded-3xl text-xl font-bold" id="btn">
-    ☁️ 測試上傳到 Google Sheet
-  </button>
-
-  <div id="result" class="mt-6 p-4 bg-white rounded-2xl text-sm font-mono whitespace-pre-wrap"></div>
-
   <script>
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/1RkTNjEyGSry_IL0jC344dBqoXOZoLH7aCWaVeWym3Fk/export?format=csv&gid=0";
     const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxP2Acck5jB6Kd6DKhI5cGtaL-fHlDqK_nYKhMOHAaWvo0ZxuQ4RlBX6vRV3OQ4QL8LBw/exec";
 
-    // 填入選單
+    let personalRecords = JSON.parse(localStorage.getItem('spendingRecords')) || [];
+    let crowdData = [];
+
     const dates = ["2026-04-10 第1週 周五","2026-04-11 第1週 周六","2026-04-12 第1週 周日","2026-04-17 第2週 周五","2026-04-18 第2週 周六","2026-04-19 第2週 周日","2026-04-24 第3週 周五","2026-04-25 第3週 周六","2026-04-26 第3週 周日","2026-05-01 第4週 周五","2026-05-02 第4週 周六","2026-05-03 第4週 周日","2026-05-08 第5週 周五","2026-05-09 第5週 周六","2026-05-10 第5週 周日","2026-05-15 第6週 周五","2026-05-16 第6週 周六","2026-05-17 第6週 周日","2026-05-22 第7週 周五","2026-05-23 第7週 周六","2026-05-24 第7週 周日","2026-05-29 第8週 周五","2026-05-30 第8週 周六","2026-05-31 第8週 周日","2026-06-05 第9週 周五","2026-06-06 第9週 周六","2026-06-07 第9週 周日","2026-06-12 第10週 周五","2026-06-13 第10週 周六","2026-06-14 第10週 周日"];
-    dates.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d; opt.textContent = d;
-      document.getElementById('date').appendChild(opt);
-    });
-
     const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
-    payments.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p; opt.textContent = p;
-      document.getElementById('payment').appendChild(opt);
-    });
+    const prizes = [0,10,20,50,100,200];
 
-    const prizeDiv = document.getElementById('prizes');
-    [0,10,20,50,100,200].forEach(p => {
-      const btn = document.createElement('button');
-      btn.className = 'border-2 border-slate-300 hover:border-sky-600 rounded-2xl py-6 text-xl font-bold transition-all';
-      btn.textContent = p + '元';
-      btn.onclick = () => btn.classList.toggle('border-sky-600');
-      prizeDiv.appendChild(btn);
-    });
+    function init() {
+      const ds = document.getElementById('dateSelect');
+      dates.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
+      const ps = document.getElementById('paymentSelect');
+      payments.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; ps.appendChild(o); });
+      const po = document.getElementById('prizeOptions');
+      prizes.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'border border-slate-300 hover:border-slate-500 rounded-2xl py-6 text-xl font-medium transition-all active:scale-95';
+        btn.textContent = p + '元';
+        btn.onclick = () => btn.classList.toggle('border-sky-500');
+        po.appendChild(btn);
+      });
 
-    async function uploadTest() {
-      const btn = document.getElementById('btn');
-      const resultDiv = document.getElementById('result');
-      btn.disabled = true;
-      btn.textContent = '上傳中...';
-      resultDiv.textContent = '正在上傳...';
+      loadCrowdData();
+      renderMyStats();
+      switchTab(0);
+    }
 
-      const date = document.getElementById('date').value;
-      const payment = document.getElementById('payment').value;
-      const selected = Array.from(document.querySelectorAll('#prizes button.border-sky-600')).map(b => parseInt(b.textContent));
+    async function loadCrowdData() {
+      Papa.parse(CSV_URL, {download: true, header: true, complete: (res) => {
+        crowdData = res.data.filter(r => r.抽獎日期);
+        renderCrowdProbability();
+      }});
+    }
 
-      if (selected.length === 0) {
-        alert('請至少選一個面額');
-        btn.disabled = false;
-        btn.textContent = '☁️ 測試上傳到 Google Sheet';
+    function saveLocal() {
+      const date = document.getElementById('dateSelect').value;
+      const payment = document.getElementById('paymentSelect').value;
+      const selected = Array.from(document.querySelectorAll('#prizeOptions button.border-sky-500')).map(b => parseInt(b.textContent));
+      if (selected.length === 0) return alert('請至少選擇一個面額');
+      selected.forEach(p => personalRecords.push({date, payment, prize: p}));
+      localStorage.setItem('spendingRecords', JSON.stringify(personalRecords));
+      alert('✅ 已存入手機');
+      renderMyStats();
+    }
+
+    async function uploadToSheet() {
+      const date = document.getElementById('dateSelect').value;
+      const payment = document.getElementById('paymentSelect').value;
+      const selected = Array.from(document.querySelectorAll('#prizeOptions button.border-sky-500')).map(b => parseInt(b.textContent));
+      if (selected.length === 0) return alert('請至少選擇一個面額');
+
+      try {
+        const promises = selected.map(prize => fetch(UPLOAD_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'text/plain;charset=utf-8'},
+          body: JSON.stringify({date, payment, prize})
+        }).then(r => r.text()));
+
+        const results = await Promise.all(promises);
+        if (results.every(r => r.includes('success'))) {
+          alert('✅ 上傳成功！');
+          loadCrowdData();
+        } else {
+          alert('上傳失敗\n' + results[0]);
+        }
+      } catch(e) {
+        alert('錯誤：' + e.message);
+      }
+    }
+
+    function renderMyStats() {
+      const container = document.getElementById('myStats');
+      if (personalRecords.length === 0) {
+        container.innerHTML = `<p class="col-span-3 text-center py-12 text-slate-400">還沒有記錄</p>`;
+        return;
+      }
+      new Chart(document.getElementById('myChart'), {type: 'bar', data: {labels: prizes, datasets: [{label: '面額分佈', data: prizes.map(p => personalRecords.filter(r=>r.prize===p).length), backgroundColor: '#0ea5e9'}]}});
+    }
+
+    function renderCrowdProbability() {
+      const sampleDiv = document.getElementById('totalSamples');
+      const tableDiv = document.getElementById('probTable');
+      const tip = document.getElementById('noDataTip');
+
+      if (crowdData.length === 0) {
+        tip.classList.remove('hidden');
         return;
       }
 
-      try {
-        const promises = selected.map(prize => 
-          fetch(UPLOAD_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ date, payment, prize })
-          }).then(r => r.text())
-        );
+      sampleDiv.textContent = `全澳總樣本數：${crowdData.length} 筆`;
 
-        const responses = await Promise.all(promises);
-        console.log('完整回應:', responses);
-
-        resultDiv.textContent = '✅ 上傳完成！\n\n後端回應：\n' + responses.join('\n\n');
-        alert('上傳完成！請把下面詳細訊息貼給我（包括 console 裡的任何錯誤）');
-      } catch(e) {
-        console.error(e);
-        resultDiv.textContent = '❌ 錯誤：\n' + e.message + '\n\n請把這個完整錯誤貼給我，我會立即幫你解決';
-        alert('錯誤：\n' + e.message + '\n\n請把彈出的完整錯誤文字貼給我');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '☁️ 測試上傳到 Google Sheet';
+      let html = `<table class="w-full text-sm"><thead><tr class="bg-slate-100"><th class="p-3">週數</th><th class="p-3">總次數</th>`;
+      prizes.forEach(p => html += `<th class="p-3">${p}元 (%)</th>`);
+      html += '</tr></thead><tbody>';
+      for (let w = 1; w <= 10; w++) {
+        const weekData = crowdData.filter(r => r.抽獎日期 && r.抽獎日期.includes(`第${w}週`));
+        if (weekData.length === 0) continue;
+        const total = weekData.length;
+        let row = `<tr class="border-b"><td class="p-3 font-medium">第${w}週</td><td class="p-3 text-center">${total}</td>`;
+        prizes.forEach(p => {
+          const count = weekData.filter(r => parseInt(r.抽獎面額) === p).length;
+          const percent = (count / total * 100).toFixed(1);
+          row += `<td class="p-3 text-center">${count} <span class="text-xs text-slate-400">(${percent}%)</span></td>`;
+        });
+        html += row + '</tr>';
       }
+      html += '</tbody></table>';
+      tableDiv.innerHTML = html;
     }
+
+    function switchTab(n) {
+      for (let i = 0; i < 3; i++) {
+        document.getElementById('page' + i).classList.add('hidden');
+        document.getElementById('tab' + i).classList.remove('border-b-2', 'border-sky-600', 'text-sky-600');
+      }
+      document.getElementById('page' + n).classList.remove('hidden');
+      document.getElementById('tab' + n).classList.add('border-b-2', 'border-sky-600', 'text-sky-600');
+    }
+
+    window.onload = init;
   </script>
 </body>
 </html>
