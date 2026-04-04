@@ -14,6 +14,7 @@
     .card { background: white; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); border-radius: 24px; }
     .chip { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
     .chip.selected { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; transform: scale(1.05); box-shadow: 0 0 0 4px rgba(16,185,129,0.3); }
+    .chip.disabled { opacity: 0.4; pointer-events: none; }
     .prize-card { height: 110px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .prize-card.selected { background: linear-gradient(135deg, #10b981, #f59e0b); color: white; box-shadow: 0 0 0 4px rgba(16,185,129,0.3); transform: scale(1.08); }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }
@@ -22,6 +23,7 @@
     .highlight-card { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; }
     th, td { font-size: 15px; padding: 12px 8px; }
     .percent-cell { font-weight: 700; color: #10b981; }
+    .chart-container { position: relative; height: 280px; margin-bottom: 20px; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
@@ -58,7 +60,7 @@
     <span id="toastText"></span>
   </div>
 
-  <!-- Page 0: 快速記錄（全新優化版） -->
+  <!-- Page 0: 快速記錄（優化版） -->
   <div id="page0" class="p-6">
     <div class="card p-6">
       <h2 class="text-3xl font-bold mb-8 text-center">新增抽獎記錄</h2>
@@ -97,7 +99,7 @@
     </button>
   </div>
 
-  <!-- Page 1: 我的抽獎 -->
+  <!-- Page 1: 我的抽獎（保留原始結構，字體加大） -->
   <div id="page1" class="p-6 hidden">
     <h2 class="text-3xl font-bold mb-6">我的抽獎</h2>
     <div id="myStats" class="grid grid-cols-3 gap-4"></div>
@@ -119,10 +121,10 @@
     </div>
   </div>
 
-  <!-- Page 2: 全澳運勢 -->
+  <!-- Page 2: 全澳運勢（保留原始結構，字體加大） -->
   <div id="page2" class="p-6 hidden">
     <div id="dataLimitWarning" class="warning-banner rounded-3xl p-4 mb-6 text-sm flex items-center gap-3 hidden">
-      ⚠️ 目前僅載入最近 10,000 筆全澳數據（活動預估總量約 10 萬筆）。統計結果為近似值。
+      ⚠️ <strong>目前僅載入最近 10,000 筆全澳數據</strong>（活動預估總量約 10 萬筆）。統計結果為近似值。
     </div>
     <h2 class="text-3xl font-bold mb-6">全澳運勢</h2>
     <div id="coreStatsCard" class="highlight-card rounded-3xl p-8 mb-8 text-center text-white">
@@ -133,43 +135,49 @@
       </div>
     </div>
     <div class="mb-10">
-      <h3 class="font-semibold text-lg mb-4">各抽獎面額分佈</h3>
+      <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><span>📊</span> 各抽獎面額分佈</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
         <canvas id="probChart" class="bg-white rounded-3xl p-6"></canvas>
       </div>
     </div>
     <div class="mb-10">
-      <h3 class="font-semibold text-lg mb-4">全澳中獎率趨勢（周別）</h3>
+      <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><span>📈</span> 全澳中獎率趨勢（周別）</h3>
       <div class="bg-white rounded-3xl p-6"><canvas id="trendChart" height="220"></canvas></div>
     </div>
     <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-6 mb-8">
-      <!-- remaining pool content 保持原樣 -->
       <div class="flex justify-between items-start mb-4">
         <div>
           <div class="text-lg font-medium">預估剩餘彩池金額</div>
           <div id="remainingAmount" class="text-5xl font-bold"></div>
         </div>
         <div class="text-right space-y-3">
-          <input id="estimatedDraws" type="number" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm">
-          <div class="text-[10px] opacity-75">預估全澳總抽獎筆數</div>
-          <input id="usageRate" type="number" value="88" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm">
-          <div class="text-[10px] opacity-75">% 使用率</div>
-          <button onclick="suggestTotalDraws()" class="mt-2 px-5 py-2 bg-white/30 text-xs rounded-2xl">📊 智能建議</button>
+          <div>
+            <input id="estimatedDraws" type="number" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
+            <div class="text-[10px] opacity-75">預估全澳總抽獎筆數</div>
+          </div>
+          <div>
+            <input id="usageRate" type="number" value="88" min="1" max="100" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
+            <div class="text-[10px] opacity-75">% 使用率（考慮過期）</div>
+          </div>
+          <button onclick="suggestTotalDraws()" class="mt-2 px-5 py-2 bg-white/30 hover:bg-white/40 text-xs rounded-2xl transition-colors">
+            📊 根據目前樣本智能建議
+          </button>
         </div>
       </div>
-      <div id="poolDetail" class="text-xs opacity-90"></div>
+      <div id="poolDetail" class="text-xs opacity-90 leading-relaxed"></div>
     </div>
     <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-8 text-sm"></div>
     <div class="mt-12">
-      <h3 class="font-semibold mb-4 text-slate-600">詳細交叉分析</h3>
+      <h3 class="font-semibold mb-4 text-slate-600">詳細交叉分析（進階參考）</h3>
       <div id="crossPaymentTable" class="bg-white rounded-3xl overflow-auto mb-8"></div>
       <div id="crossPrizeTable" class="bg-white rounded-3xl overflow-auto mb-8"></div>
+      <h3 class="font-semibold mb-4 text-slate-600">周 × 支付系統 中獎總金額（元）</h3>
       <div id="crossPaymentAmountTable" class="bg-white rounded-3xl overflow-auto"></div>
     </div>
   </div>
 
-  <!-- Edit Modal（原功能保留） -->
+  <!-- Edit Modal（原始保留） -->
   <div id="editModal" class="modal">
     <div class="modal-content bg-white max-w-md w-full rounded-3xl p-6">
       <h3 class="text-xl font-semibold mb-6">編輯抽獎記錄</h3>
@@ -177,7 +185,7 @@
       <select id="editPayment" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg mb-4"></select>
       <select id="editPrize" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg"></select>
       <div class="flex gap-4 mt-8">
-        <button onclick="hideEditModal()" class="flex-1 py-4 border border-slate-300 rounded-2xl">取消</button>
+        <button onclick="hideEditModal()" class="flex-1 py-4 border border-slate-300 rounded-2xl text-slate-600">取消</button>
         <button onclick="saveEdit()" class="flex-1 py-4 bg-emerald-600 text-white rounded-2xl">儲存修改</button>
       </div>
     </div>
@@ -185,7 +193,8 @@
 
   <!-- Footer -->
   <footer class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t text-center text-xs text-slate-500 py-4">
-    © 2026 社區消費大獎賞 All Rights Reserved.
+    © 2026 社區消費大獎賞 All Rights Reserved.<br>
+    隱私權聲明：本App僅收集匿名抽獎數據用於全澳統計分析，絕不作其他用途。
   </footer>
 
   <script>
@@ -214,11 +223,74 @@
     const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
     const prizes = [0,10,20,50,100,200];
     const TOTAL_POOL = 320000000;
+    const weekRanges = {1:"4/10-4/12",2:"4/17-4/19",3:"4/24-4/26",4:"5/1-5/3",5:"5/8-5/10",6:"5/15-5/17",7:"5/22-5/24",8:"5/29-5/31",9:"6/5-6/7",10:"6/12-6/14"};
 
-    function getWeekNumber(dateStr) { /* 原函數保留 */ const match = dateStr.match(/第(\d+)周/); return match ? parseInt(match[1]) : null; }
-    function formatMyRecordDate(dateStr) { /* 原函數保留 */ /* ... */ }
+    function getWeekNumber(dateStr) {
+      const match = dateStr.match(/第(\d+)周/);
+      return match ? parseInt(match[1]) : null;
+    }
 
-    // 新增 Toast & Confetti
+    function formatMyRecordDate(dateStr) {
+      const parts = dateStr.trim().split(/\s+/);
+      const datePart = parts[0];
+      const [ , monthStr, dayStr ] = datePart.split('-');
+      const monthDay = `${parseInt(monthStr)}/${parseInt(dayStr)}`;
+      let weekNum = (parts[1] || '').replace(/第/, '').replace(/[周週]/g, '');
+      let day = (parts[2] || '').replace(/[周週]/g, '');
+      return `第${weekNum}周 ${monthDay} (${day})`;
+    }
+
+    async function refreshAllData() {
+      if (currentUser) await loadPersonalRecords();
+      await loadCrowdData();
+    }
+
+    function calculatePoolStats(estimatedDraws, usageRate) {
+      if (crowdData.length === 0) return { remaining: TOTAL_POOL, avg: 0, disbursed: 0 };
+      let totalPrize = 0;
+      crowdData.forEach(r => totalPrize += (r.prize || 0));
+      const avg = totalPrize / crowdData.length;
+      const effectiveDraws = estimatedDraws * (usageRate / 100);
+      const disbursed = avg * effectiveDraws;
+      const remaining = Math.max(0, TOTAL_POOL - disbursed);
+      return { remaining: Math.round(remaining), avg: avg.toFixed(1), disbursed: Math.round(disbursed) };
+    }
+
+    function suggestTotalDraws() {
+      const sampleCount = crowdData.length;
+      if (sampleCount === 0) {
+        document.getElementById('estimatedDraws').value = 400000;
+        alert('目前還沒有樣本數據，將使用活動初期合理起始值 400,000 筆');
+      } else {
+        const suggested = Math.round(sampleCount * 600);
+        document.getElementById('estimatedDraws').value = suggested;
+      }
+      renderRemainingPool();
+      alert(`已根據目前樣本數建議全澳總抽獎筆數：${document.getElementById('estimatedDraws').value} 筆（放大600倍）`);
+    }
+
+    function renderRemainingPool() {
+      let estimatedDraws = parseInt(document.getElementById('estimatedDraws').value);
+      if (!estimatedDraws || estimatedDraws <= 0) {
+        estimatedDraws = crowdData.length > 0 ? Math.round(crowdData.length * 600) : 400000;
+        document.getElementById('estimatedDraws').value = estimatedDraws;
+      }
+      const usageRate = parseFloat(document.getElementById('usageRate').value) || 88;
+      const stats = calculatePoolStats(estimatedDraws, usageRate);
+      document.getElementById('remainingAmount').textContent = `$${stats.remaining.toLocaleString()}`;
+      document.getElementById('poolDetail').innerHTML = `
+        <strong>官方推算方式（電子優惠券彩池）</strong><br>
+        主辦單位：澳門經濟及科技發展局與澳門中華總商會<br>
+        電子優惠券官方預算 P = 3.2億澳門元<br><br>
+        剩餘彩池 = P - 已核銷總額<br>
+        已核銷總額 = 已發放總值 × 使用率 R<br>
+        已發放總值 = 樣本平均中獎金額 × 預估全澳總抽獎筆數<br><br>
+        目前樣本平均：$${stats.avg}　•　已發放估計：$${stats.disbursed.toLocaleString()}<br>
+        <span class="opacity-75">※ 這是根據目前樣本數動態估計的全活動總量（目前樣本 × 600）。活動初期數字較小，後期會自動上升。</span>
+      `;
+    }
+
+    // 新增：Toast & Confetti
     function showToast(msg) {
       const t = document.getElementById('toast');
       document.getElementById('toastText').textContent = msg;
@@ -232,7 +304,6 @@
       document.body.appendChild(canvas);
       const ctx = canvas.getContext('2d');
       canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-      // 簡單 Confetti 粒子（可直接使用）
       let particles = [];
       for (let i = 0; i < 150; i++) {
         particles.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height-200, size: Math.random()*8+4, speed: Math.random()*3+2, color: ['#10b981','#f59e0b','#eab308'][Math.floor(Math.random()*3)]});
@@ -253,55 +324,64 @@
       setTimeout(() => canvas.remove(), 2000);
     }
 
-    // Chips 與 Prize 渲染（核心優化）
+    // 新增：日期 Chips（含未來日期禁用）
     function renderDateChips() {
-      const c = document.getElementById('dateChips');
-      c.innerHTML = '';
+      const container = document.getElementById('dateChips');
+      container.innerHTML = '';
+      const now = new Date();
       dates.forEach(d => {
-        const btn = document.createElement('button');
-        btn.className = `chip flex-shrink-0 px-7 py-4 rounded-3xl text-base font-medium border border-slate-200 snap-center whitespace-nowrap`;
-        btn.textContent = d;
-        btn.onclick = () => {
-          document.querySelectorAll('#dateChips .chip').forEach(el => el.classList.remove('selected'));
-          btn.classList.add('selected');
-          selectedDate = d;
-          document.getElementById('previewCard').classList.remove('hidden');
-          updatePreview();
-        };
-        c.appendChild(btn);
+        const chip = document.createElement('button');
+        const datePart = d.split(' ')[0];
+        const isFuture = new Date(datePart) > now;
+        chip.className = `chip flex-shrink-0 px-7 py-4 rounded-3xl text-base font-medium border border-slate-200 snap-center whitespace-nowrap ${isFuture ? 'disabled' : ''}`;
+        chip.textContent = d;
+        if (!isFuture) {
+          chip.onclick = () => {
+            document.querySelectorAll('#dateChips .chip').forEach(el => el.classList.remove('selected'));
+            chip.classList.add('selected');
+            selectedDate = d;
+            document.getElementById('previewCard').classList.remove('hidden');
+            updatePreview();
+          };
+        }
+        container.appendChild(chip);
       });
-      selectedDate = dates[0];
-      document.querySelector('#dateChips .chip').classList.add('selected');
+      // 預設選第一個非未來日期
+      const firstAvailable = Array.from(container.children).find(c => !c.classList.contains('disabled'));
+      if (firstAvailable) {
+        firstAvailable.classList.add('selected');
+        selectedDate = firstAvailable.textContent;
+      }
     }
 
     function renderPaymentChips() {
-      const c = document.getElementById('paymentChips');
-      c.innerHTML = '';
+      const container = document.getElementById('paymentChips');
+      container.innerHTML = '';
       payments.forEach(p => {
-        const btn = document.createElement('button');
-        btn.className = `chip flex-shrink-0 px-8 py-4 rounded-3xl text-base font-medium border border-slate-200 whitespace-nowrap`;
-        btn.textContent = p;
-        btn.onclick = () => {
+        const chip = document.createElement('button');
+        chip.className = `chip flex-shrink-0 px-8 py-4 rounded-3xl text-base font-medium border border-slate-200 whitespace-nowrap`;
+        chip.textContent = p;
+        chip.onclick = () => {
           document.querySelectorAll('#paymentChips .chip').forEach(el => el.classList.remove('selected'));
-          btn.classList.add('selected');
+          chip.classList.add('selected');
           selectedPayment = p;
           updatePreview();
         };
-        c.appendChild(btn);
+        container.appendChild(chip);
       });
       selectedPayment = payments[0];
       document.querySelector('#paymentChips .chip').classList.add('selected');
     }
 
     function renderPrizeCards() {
-      const c = document.getElementById('prizeOptions');
-      c.innerHTML = '';
+      const container = document.getElementById('prizeOptions');
+      container.innerHTML = '';
       prizes.forEach(p => {
         const card = document.createElement('button');
         card.className = `prize-card card flex flex-col items-center justify-center text-4xl font-bold border-2 border-slate-200 rounded-3xl`;
         card.innerHTML = p === 0 ? `未中獎<br><span class="text-base">0元</span>` : `${p}<span class="text-xl">元</span>`;
         card.onclick = () => togglePrize(card, p);
-        c.appendChild(card);
+        container.appendChild(card);
       });
     }
 
@@ -319,48 +399,21 @@
     }
 
     function updatePreview() {
-      const total = selectedPrizes.reduce((a,b)=>a+b,0);
+      const total = selectedPrizes.reduce((a,b) => a + b, 0);
       document.getElementById('previewContent').innerHTML = `
         <div>日期：${selectedDate.split(' ')[0]}</div>
         <div class="text-right">總金額 <span class="text-emerald-600 font-bold">$${total}</span></div>
       `;
     }
 
-    // 原有 saveAndContribute 升級版
-    async function saveAndContribute() {
-      if (!currentUser) return alert('請先登入 Google 帳戶');
-      if (!selectedDate || !selectedPayment || selectedPrizes.length === 0) return alert('請完成所有選擇');
-
-      const week = getWeekNumber(selectedDate);
-      const currentWeekCount = personalRecords.filter(r => getWeekNumber(r.date) === week && r.payment === selectedPayment).length;
-      if (currentWeekCount + selectedPrizes.length > 3) return alert(`⚠️ 本周 ${selectedPayment} 已達上限`);
-
-      const btn = document.getElementById('mainBtn');
-      btn.disabled = true; btn.textContent = '儲存中...';
-
-      try {
-        for (let prize of selectedPrizes) {
-          const crowdRef = await db.collection('crowdRecords').add({ date: selectedDate, payment: selectedPayment, prize, week, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-          await db.collection('personalRecords').add({ uid: currentUser.uid, date: selectedDate, payment: selectedPayment, prize, week, linkId: crowdRef.id, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-        }
-        selectedPrizes = [];
-        document.getElementById('selectionCounter').textContent = `已選 0 / 3`;
-        showToast('✅ 已成功儲存並貢獻全澳運勢！');
-        triggerConfetti();
-        await refreshAllData();
-        switchTab(1);
-      } catch (e) { alert('儲存失敗：' + e.message); } finally {
-        btn.disabled = false; btn.textContent = '💾 儲存並貢獻全澳運勢';
-      }
-    }
-
-    // 其餘所有原生函數（loadPersonalRecords、loadCrowdData、renderMyStats、renderCrowdProbability、renderPaymentChart、renderWeeklyChart、renderHistoryList、deleteRecord、showEditModal、saveEdit、renderRemainingPool、suggestTotalDraws 等）**全部保留**並套用新樣式（字體已放大）。
-
-    // init 函數升級
     function init() {
       renderDateChips();
       renderPaymentChips();
       renderPrizeCards();
+
+      document.getElementById('estimatedDraws').addEventListener('input', renderRemainingPool);
+      document.getElementById('usageRate').addEventListener('input', renderRemainingPool);
+
       loadCrowdData();
       switchTab(0);
 
@@ -373,21 +426,370 @@
       });
     }
 
-    // 原有 switchTab、refreshAllData 等函數保持不變（僅更新 active 狀態）
+    async function googleLogin() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try { await auth.signInWithPopup(provider); } catch (e) { alert('登入失敗：' + e.message); }
+    }
+
+    async function saveAndContribute() {
+      if (!currentUser) return alert('請先登入 Google 帳戶');
+      if (!selectedDate || !selectedPayment || selectedPrizes.length === 0) return alert('請完成所有選擇');
+
+      const week = getWeekNumber(selectedDate);
+      const currentWeekCount = personalRecords.filter(r => getWeekNumber(r.date) === week && r.payment === selectedPayment).length;
+      if (currentWeekCount + selectedPrizes.length > 3) return alert(`⚠️ ${selectedPayment} 本周已使用 ${currentWeekCount} 次！\n每周每支付系統上限僅3次。`);
+
+      const btn = document.getElementById('mainBtn');
+      btn.disabled = true; btn.textContent = '儲存中...';
+
+      try {
+        for (let prize of selectedPrizes) {
+          const crowdRef = await db.collection('crowdRecords').add({
+            date: selectedDate, payment: selectedPayment, prize, week,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          const linkId = crowdRef.id;
+          await db.collection('personalRecords').add({
+            uid: currentUser.uid, date: selectedDate, payment: selectedPayment, prize, week, linkId,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        selectedPrizes = [];
+        document.getElementById('selectionCounter').textContent = `已選 0 / 3`;
+        showToast('✅ 已成功儲存並貢獻全澳運勢！');
+        triggerConfetti();
+        await refreshAllData();
+        switchTab(1);
+      } catch (e) { 
+        alert('儲存失敗：' + e.message); 
+      } finally {
+        btn.disabled = false; 
+        btn.textContent = '💾 儲存並貢獻全澳運勢';
+      }
+    }
+
+    async function loadPersonalRecords() {
+      if (!currentUser) return;
+      const snapshot = await db.collection('personalRecords').where('uid', '==', currentUser.uid).get();
+      personalRecords = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+      renderMyStats();
+    }
+
+    async function loadCrowdData() {
+      const snapshot = await db.collection('crowdRecords')
+        .orderBy('timestamp', 'desc')
+        .limit(10000)
+        .get();
+      crowdData = snapshot.docs.map(doc => doc.data());
+      renderCrowdProbability();
+    }
+
+    function renderPaymentChart() {
+      if (window.paymentChart && typeof window.paymentChart.destroy === 'function') window.paymentChart.destroy();
+      const paymentData = {};
+      payments.forEach(p => paymentData[p] = {count: 0, amount: 0});
+      personalRecords.forEach(r => {
+        if (paymentData[r.payment]) {
+          paymentData[r.payment].count++;
+          paymentData[r.payment].amount += r.prize || 0;
+        }
+      });
+      window.paymentChart = new Chart(document.getElementById('paymentChart'), {
+        type: 'bar',
+        data: {
+          labels: payments.map(p => p.slice(0,8)),
+          datasets: [
+            { label: '中獎次數', data: payments.map(p => paymentData[p].count), backgroundColor: '#10b981' },
+            { label: '中獎金額 (元)', data: payments.map(p => paymentData[p].amount), backgroundColor: '#3b82f6' }
+          ]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    function renderWeeklyChart() {
+      if (window.weeklyChart && typeof window.weeklyChart.destroy === 'function') window.weeklyChart.destroy();
+      const weeklyData = {};
+      personalRecords.forEach(r => {
+        const week = getWeekNumber(r.date);
+        if (!weeklyData[week]) weeklyData[week] = {count: 0, amount: 0};
+        weeklyData[week].count++;
+        weeklyData[week].amount += r.prize || 0;
+      });
+      const sortedWeeks = Object.keys(weeklyData).sort((a,b)=>parseInt(a)-parseInt(b));
+      const labels = sortedWeeks.map(w => `第${w}周`);
+      const countData = sortedWeeks.map(w => weeklyData[w].count);
+      const amountData = sortedWeeks.map(w => weeklyData[w].amount);
+      window.weeklyChart = new Chart(document.getElementById('weeklyChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '中獎次數', data: countData, borderColor: '#10b981', tension: 0.4 },
+            { label: '中獎金額 (元)', data: amountData, borderColor: '#3b82f6', tension: 0.4 }
+          ]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    function renderMyStats() {
+      if (window.myChart && typeof window.myChart.destroy === 'function') window.myChart.destroy();
+      const container = document.getElementById('myStats');
+      if (personalRecords.length === 0) {
+        container.innerHTML = `<p class="col-span-3 text-center py-12 text-slate-400">還沒有記錄</p>`;
+        return;
+      }
+      const total = personalRecords.length;
+      const totalPrize = personalRecords.reduce((sum, r) => sum + r.prize, 0);
+      const winRate = ((personalRecords.filter(r => r.prize > 0).length / total) * 100).toFixed(1);
+      container.innerHTML = `
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-sky-600">${total}</div><div class="text-xs text-slate-500">總抽獎次數</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-emerald-600">$${totalPrize}</div><div class="text-xs text-slate-500">總中獎金額</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${winRate}%</div><div class="text-xs text-slate-500">整體中獎率</div></div>
+      `;
+      window.myChart = new Chart(document.getElementById('myChart'), { 
+        type: 'bar', 
+        data: { 
+          labels: prizes, 
+          datasets: [{ 
+            label: '面額分佈', 
+            data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), 
+            backgroundColor: '#10b981' 
+          }] 
+        } 
+      });
+      renderPaymentChart();
+      renderWeeklyChart();
+      renderHistoryList();
+    }
+
+    async function deleteRecord(id) {
+      if (!confirm('確定要刪除這筆抽獎記錄嗎？\n\n此操作會同時從「全澳運勢」中移除對應數據，無法復原。')) return;
+      const record = personalRecords.find(r => r.id === id);
+      try {
+        if (record && record.linkId) {
+          const batch = db.batch();
+          batch.delete(db.collection('personalRecords').doc(id));
+          batch.delete(db.collection('crowdRecords').doc(record.linkId));
+          await batch.commit();
+        } else {
+          await db.collection('personalRecords').doc(id).delete();
+        }
+        await refreshAllData();
+        alert('✅ 已刪除記錄並同步全澳運勢');
+      } catch (e) { 
+        alert('刪除失敗：' + e.message); 
+      }
+    }
+
+    function showEditModal(id) {
+      editingRecordId = id;
+      const record = personalRecords.find(r => r.id === id);
+      const editDate = document.getElementById('editDate');
+      editDate.innerHTML = dates.map(d => `<option value="${d}" ${d===record.date?'selected':''}>${d}</option>`).join('');
+      const editPayment = document.getElementById('editPayment');
+      editPayment.innerHTML = payments.map(p => `<option value="${p}" ${p===record.payment?'selected':''}>${p}</option>`).join('');
+      const editPrize = document.getElementById('editPrize');
+      editPrize.innerHTML = prizes.map(p => `<option value="${p}" ${p===record.prize?'selected':''}>${p===0?'未中獎 (0元)':p+'元'}</option>`).join('');
+      document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function hideEditModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+
+    async function saveEdit() {
+      if (!editingRecordId) return;
+      const record = personalRecords.find(r => r.id === editingRecordId);
+      const newDate = document.getElementById('editDate').value;
+      const newPayment = document.getElementById('editPayment').value;
+      const newPrize = parseInt(document.getElementById('editPrize').value);
+      try {
+        if (record && record.linkId) {
+          const batch = db.batch();
+          batch.update(db.collection('personalRecords').doc(editingRecordId), { date: newDate, payment: newPayment, prize: newPrize });
+          batch.update(db.collection('crowdRecords').doc(record.linkId), { date: newDate, payment: newPayment, prize: newPrize });
+          await batch.commit();
+        } else {
+          await db.collection('personalRecords').doc(editingRecordId).update({ date: newDate, payment: newPayment, prize: newPrize });
+        }
+        hideEditModal();
+        await refreshAllData();
+        alert('✅ 已成功更新記錄並同步全澳運勢！');
+      } catch (e) { 
+        alert('更新失敗：' + e.message); 
+      }
+    }
+
+    function renderCrowdProbability() {
+      const warningEl = document.getElementById('dataLimitWarning');
+      if (crowdData.length >= 10000) {
+        warningEl.classList.remove('hidden');
+      } else {
+        warningEl.classList.add('hidden');
+      }
+      const total = crowdData.length;
+      const prizeCount = {0:0,10:0,20:0,50:0,100:0,200:0};
+      let totalPrizeAmount = 0, wins = 0;
+      crowdData.forEach(r => {
+        const p = r.prize || 0;
+        prizeCount[p]++;
+        totalPrizeAmount += p;
+        if (p > 0) wins++;
+      });
+      const avgPrize = total ? (totalPrizeAmount / total).toFixed(1) : '0';
+      const winRate = total ? ((wins / total) * 100).toFixed(1) : '0';
+      document.getElementById('totalSamplesBig').textContent = total.toLocaleString();
+      document.getElementById('winRateBig').textContent = winRate + '%';
+      document.getElementById('avgPrizeBig').textContent = '$' + avgPrize;
+      let html = `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="px-6 py-3 text-left">面額</th><th class="px-6 py-3 text-center">次數</th><th class="px-6 py-3 text-center">概率</th></tr></thead><tbody class="divide-y">`;
+      [0,10,20,50,100,200].forEach(p => {
+        const count = prizeCount[p];
+        const prob = total ? ((count / total) * 100).toFixed(2) : '0.00';
+        html += `<tr><td class="px-6 py-4 font-medium">${p===0?'未中獎':p+'元'}</td><td class="px-6 py-4 text-center font-semibold">${count}</td><td class="px-6 py-4 text-center font-semibold">${prob}%</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+      document.getElementById('probTable').innerHTML = html;
+      if (window.myProbChart && typeof window.myProbChart.destroy === 'function') window.myProbChart.destroy();
+      window.myProbChart = new Chart(document.getElementById('probChart'), {
+        type: 'doughnut',
+        data: { labels: ['未中獎','10元','20元','50元','100元','200元'], datasets: [{ data: Object.values(prizeCount), backgroundColor: ['#64748b','#22c55e','#eab308','#3b82f6','#a855f7','#ec4899'] }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+      });
+      const weeklyData = {};
+      dates.forEach(d => {
+        const week = getWeekNumber(d);
+        if (!weeklyData[week]) weeklyData[week] = {total: 0, wins: 0};
+      });
+      crowdData.forEach(r => {
+        const week = getWeekNumber(r.date);
+        if (weeklyData[week]) {
+          weeklyData[week].total++;
+          if (r.prize > 0) weeklyData[week].wins++;
+        }
+      });
+      const weekLabels = [];
+      const winRateData = [];
+      Object.keys(weeklyData).sort((a,b)=>a-b).forEach(week => {
+        weekLabels.push(`第${week}周`);
+        const d = weeklyData[week];
+        const rate = d.total ? ((d.wins / d.total) * 100).toFixed(1) : 0;
+        winRateData.push(parseFloat(rate));
+      });
+      if (window.myTrendChart && typeof window.myTrendChart.destroy === 'function') window.myTrendChart.destroy();
+      window.myTrendChart = new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+          labels: weekLabels,
+          datasets: [{
+            label: '中獎率 (%)',
+            data: winRateData,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4,
+            borderWidth: 3,
+            pointBackgroundColor: '#10b981',
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 100, title: { display: true, text: '中獎率 (%)' } },
+            x: { title: { display: true, text: '周別' } }
+          }
+        }
+      });
+      renderRemainingPool();
+      document.getElementById('upperLimits').innerHTML = `
+        <div class="flex items-start gap-3">
+          <span class="text-2xl">📌</span>
+          <div>
+            <strong class="text-blue-700">抽獎機會上限</strong><br>
+            • 每支付系統每周最多 <strong class="text-blue-600">3次</strong><br>
+            • 8個錢包最多 <strong class="text-blue-600">24次/周</strong><br>
+            • 僅限周五至周日<br>
+            <span class="text-xs text-blue-600">目前樣本已收集 ${total.toLocaleString()} 次（最近 10,000 筆） • 數據品質高</span>
+          </div>
+        </div>
+      `;
+      let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
+      payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
+      paymentHTML += `</tr></thead><tbody>`;
+      dates.forEach(d => {
+        const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
+        const dayTotal = dayData.length;
+        paymentHTML += `<tr><td class="font-medium text-left">${formatMyRecordDate(d)}</td>`;
+        payments.forEach(pay => {
+          const count = dayData.filter(r => r.payment === pay).length;
+          const percent = dayTotal ? ((count / dayTotal) * 100).toFixed(0) : 0;
+          paymentHTML += `<td><span class="percent-cell">${percent}%</span><br><span class="text-xs text-slate-400">(${count}筆)</span></td>`;
+        });
+        paymentHTML += `</tr>`;
+      });
+      paymentHTML += `</tbody></table>`;
+      document.getElementById('crossPaymentTable').innerHTML = paymentHTML;
+      let prizeHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
+      [0,10,20,50,100,200].forEach(p => prizeHTML += `<th class="text-xs">${p===0?'未中':p}元</th>`);
+      prizeHTML += `</tr></thead><tbody>`;
+      dates.forEach(d => {
+        const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
+        const dayTotal = dayData.length;
+        prizeHTML += `<tr><td class="font-medium text-left">${formatMyRecordDate(d)}</td>`;
+        [0,10,20,50,100,200].forEach(pr => {
+          const count = dayData.filter(r => r.prize === pr).length;
+          const percent = dayTotal ? ((count / dayTotal) * 100).toFixed(0) : 0;
+          prizeHTML += `<td><span class="percent-cell">${percent}%</span><br><span class="text-xs text-slate-400">(${count}筆)</span></td>`;
+        });
+        prizeHTML += `</tr>`;
+      });
+      prizeHTML += `</tbody></table>`;
+      document.getElementById('crossPrizeTable').innerHTML = prizeHTML;
+      let amountHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
+      payments.forEach(p => amountHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
+      amountHTML += `</tr></thead><tbody>`;
+      dates.forEach(d => {
+        const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
+        amountHTML += `<tr><td class="font-medium text-left">${formatMyRecordDate(d)}</td>`;
+        payments.forEach(pay => {
+          const totalAmount = dayData.filter(r => r.payment === pay).reduce((sum, r) => sum + (r.prize || 0), 0);
+          amountHTML += `<td class="font-semibold">$${totalAmount}</td>`;
+        });
+        amountHTML += `</tr>`;
+      });
+      amountHTML += `</tbody></table>`;
+      document.getElementById('crossPaymentAmountTable').innerHTML = amountHTML;
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('historyList');
+      container.innerHTML = personalRecords.map(r => `
+        <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
+          <div>
+            <div class="font-medium">${formatMyRecordDate(r.date)}</div>
+            <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="showEditModal('${r.id}')" class="px-5 py-2 text-emerald-600 border border-emerald-200 rounded-2xl text-sm">修改</button>
+            <button onclick="deleteRecord('${r.id}')" class="px-5 py-2 text-rose-600 border border-rose-200 rounded-2xl text-sm">刪除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
     function switchTab(n) {
-      document.querySelectorAll('[id^="page"]').forEach(p => p.classList.add('hidden'));
+      for (let i = 0; i < 3; i++) document.getElementById('page' + i).classList.add('hidden');
       document.getElementById('page' + n).classList.remove('hidden');
+      if (n === 1 && currentUser) renderMyStats();
+      if (n === 2) renderCrowdProbability();
       document.querySelectorAll('#tab0,#tab1,#tab2').forEach((b,i) => {
         b.classList.toggle('text-emerald-600', i===n);
         b.classList.toggle('border-b-4', i===n);
         b.classList.toggle('border-emerald-600', i===n);
       });
-      if (n===1 && currentUser) renderMyStats();
-      if (n===2) renderCrowdProbability();
     }
-
-    // 原有所有 render* 函數、deleteRecord、edit 相關函數請保留原邏輯（已內建於完整檔案中）。
-    // 完整版已包含所有原始 JS 邏輯 + 新增優化部分。
 
     window.onload = init;
   </script>
