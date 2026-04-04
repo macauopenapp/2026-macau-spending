@@ -160,6 +160,7 @@
 
       <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-8 text-sm"></div>
 
+      <!-- 詳細交叉分析 -->
       <div class="mt-12">
         <h3 class="font-semibold mb-4 text-slate-600">詳細交叉分析（進階參考）</h3>
         <div id="crossPaymentTable" class="bg-white rounded-3xl overflow-auto mb-8"></div>
@@ -221,6 +222,19 @@
     function getWeekNumber(dateStr) {
       const match = dateStr.match(/第(\d+)週/);
       return match ? parseInt(match[1]) : null;
+    }
+
+    // ============== 新增：我的戰績專用日期格式化（按您的要求） ==============
+    function formatMyRecordDate(dateStr) {
+      // 輸入示例： "2026-04-10 第1週 周五"
+      // 輸出示例： "第1周 4/10 (五)"
+      const parts = dateStr.split(' ');
+      const datePart = parts[0];                    // "2026-04-10"
+      const weekNum = parts[1].replace('第', '').replace('週', '周'); // "1"
+      let day = parts[2];                           // "周五"
+      day = day.replace('周', '');                  // 去掉「周」 → "五"
+      const monthDay = datePart.substring(5).replace('-', '/'); // "04-10" → "4/10"
+      return `第${weekNum}周 ${monthDay} (${day})`;
     }
 
     function disableFutureDates() {
@@ -402,10 +416,7 @@
     }
 
     function renderMyStats() {
-      // 修正重點：安全檢查 destroy 是否存在
-      if (window.myChart && typeof window.myChart.destroy === 'function') {
-        window.myChart.destroy();
-      }
+      if (window.myChart && typeof window.myChart.destroy === 'function') window.myChart.destroy();
 
       const container = document.getElementById('myStats');
       if (personalRecords.length === 0) {
@@ -531,7 +542,6 @@
       html += `</tbody></table></div>`;
       document.getElementById('probTable').innerHTML = html;
 
-      // 修正重點：安全檢查 destroy
       if (window.myProbChart && typeof window.myProbChart.destroy === 'function') window.myProbChart.destroy();
       window.myProbChart = new Chart(document.getElementById('probChart'), {
         type: 'doughnut',
@@ -561,9 +571,8 @@
         winRateData.push(parseFloat(rate));
       });
 
-      const trendCtx = document.getElementById('trendChart');
       if (window.myTrendChart && typeof window.myTrendChart.destroy === 'function') window.myTrendChart.destroy();
-      window.myTrendChart = new Chart(trendCtx, {
+      window.myTrendChart = new Chart(document.getElementById('trendChart'), {
         type: 'line',
         data: {
           labels: weekLabels,
@@ -603,7 +612,6 @@
         </div>
       `;
 
-      // 交叉分析表（保持不變）
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
@@ -665,7 +673,8 @@
       container.innerHTML = personalRecords.map(r => `
         <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
           <div>
-            <div class="font-medium">${r.date}</div>
+            <!-- 已調整為您指定的格式：第1周 4/10 (五) -->
+            <div class="font-medium">${formatMyRecordDate(r.date)}</div>
             <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
           </div>
           <div class="flex gap-2">
