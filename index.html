@@ -188,6 +188,7 @@
     隱私權聲明：本App僅收集匿名抽獎數據用於全澳統計分析，絕不作其他用途。
   </footer>
 
+  <!-- ==================== 完整修正後的 Script ==================== -->
   <script>
     // ============== Firebase 配置 ==============
     const firebaseConfig = {
@@ -220,7 +221,7 @@
     }
 
     function disableFutureDates() {
-      const now = new Date('2026-04-04');
+      const now = new Date();
       const ds = document.getElementById('dateSelect');
       Array.from(ds.options).forEach(opt => {
         const datePart = opt.value.split(' ')[0];
@@ -247,7 +248,6 @@
       return { remaining: Math.round(remaining), avg: avg.toFixed(1), disbursed: Math.round(disbursed) };
     }
 
-    // 修正後的 suggestTotalDraws（純動態 ×600，無強制下限）
     function suggestTotalDraws() {
       const sampleCount = crowdData.length;
       if (sampleCount === 0) {
@@ -358,15 +358,27 @@
 
       try {
         for (let prize of selectedPrizes) {
-          await db.collection('personalRecords').add({ uid: currentUser.uid, date, payment, prize, week, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-          await db.collection('crowdRecords').add({ date, payment, prize, week, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+          const crowdRef = await db.collection('crowdRecords').add({
+            date, payment, prize, week,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          const linkId = crowdRef.id;
+
+          await db.collection('personalRecords').add({
+            uid: currentUser.uid, date, payment, prize, week, linkId,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
         }
+
         selectedPrizes = [];
         document.getElementById('selectionCounter').textContent = `已選 0 / 3 次機會`;
         await refreshAllData();
         alert('✅ 已成功儲存並貢獻到全澳運勢！');
-      } catch (e) { alert('儲存失敗：' + e.message); } finally {
-        btn.disabled = false; btn.textContent = '💾 儲存並貢獻到全澳運勢';
+      } catch (e) { 
+        alert('儲存失敗：' + e.message); 
+      } finally {
+        btn.disabled = false; 
+        btn.textContent = '💾 儲存並貢獻到全澳運勢';
       }
     }
 
@@ -387,6 +399,8 @@
     }
 
     function renderMyStats() {
+      if (window.myChart) window.myChart.destroy();
+
       const container = document.getElementById('myStats');
       if (personalRecords.length === 0) {
         container.innerHTML = `<p class="col-span-3 text-center py-12 text-slate-400">還沒有記錄</p>`;
@@ -401,34 +415,40 @@
         <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-emerald-600">$${totalPrize}</div><div class="text-xs text-slate-500">總中獎金額</div></div>
         <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${winRate}%</div><div class="text-xs text-slate-500">整體中獎率</div></div>
       `;
-      new Chart(document.getElementById('myChart'), { type: 'bar', data: { labels: prizes, datasets: [{ label: '面額分佈', data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), backgroundColor: '#10b981' }] } });
+
+      window.myChart = new Chart(document.getElementById('myChart'), { 
+        type: 'bar', 
+        data: { 
+          labels: prizes, 
+          datasets: [{ 
+            label: '面額分佈', 
+            data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), 
+            backgroundColor: '#10b981' 
+          }] 
+        } 
+      });
 
       renderHistoryList();
     }
 
-    function renderHistoryList() {
-      const container = document.getElementById('historyList');
-      container.innerHTML = personalRecords.map(r => `
-        <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
-          <div>
-            <div class="font-medium">${r.date}</div>
-            <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="showEditModal('${r.id}')" class="px-5 py-2 text-emerald-600 border border-emerald-200 rounded-2xl text-sm">修改</button>
-            <button onclick="deleteRecord('${r.id}')" class="px-5 py-2 text-rose-600 border border-rose-200 rounded-2xl text-sm">刪除</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
     async function deleteRecord(id) {
-      if (!confirm('確定要刪除這筆抽獎記錄嗎？')) return;
+      if (!confirm('確定要刪除這筆抽獎記錄嗎？\n\n此操作會同時從「全澳運勢」中移除對應數據，無法復原。')) return;
+
+      const record = personalRecords.find(r => r.id === id);
       try {
-        await db.collection('personalRecords').doc(id).delete();
+        if (record && record.linkId) {
+          const batch = db.batch();
+          batch.delete(db.collection('personalRecords').doc(id));
+          batch.delete(db.collection('crowdRecords').doc(record.linkId));
+          await batch.commit();
+        } else {
+          await db.collection('personalRecords').doc(id).delete();
+        }
         await refreshAllData();
-        alert('✅ 已刪除記錄');
-      } catch (e) { alert('刪除失敗：' + e.message); }
+        alert('✅ 已刪除記錄並同步全澳運勢');
+      } catch (e) { 
+        alert('刪除失敗：' + e.message); 
+      }
     }
 
     function showEditModal(id) {
@@ -449,15 +469,32 @@
 
     async function saveEdit() {
       if (!editingRecordId) return;
+      const record = personalRecords.find(r => r.id === editingRecordId);
       const newDate = document.getElementById('editDate').value;
       const newPayment = document.getElementById('editPayment').value;
       const newPrize = parseInt(document.getElementById('editPrize').value);
+
       try {
-        await db.collection('personalRecords').doc(editingRecordId).update({ date: newDate, payment: newPayment, prize: newPrize });
+        if (record && record.linkId) {
+          const batch = db.batch();
+          batch.update(db.collection('personalRecords').doc(editingRecordId), { 
+            date: newDate, payment: newPayment, prize: newPrize 
+          });
+          batch.update(db.collection('crowdRecords').doc(record.linkId), { 
+            date: newDate, payment: newPayment, prize: newPrize 
+          });
+          await batch.commit();
+        } else {
+          await db.collection('personalRecords').doc(editingRecordId).update({ 
+            date: newDate, payment: newPayment, prize: newPrize 
+          });
+        }
         hideEditModal();
         await refreshAllData();
-        alert('✅ 已成功更新記錄！');
-      } catch (e) { alert('更新失敗：' + e.message); }
+        alert('✅ 已成功更新記錄並同步全澳運勢！');
+      } catch (e) { 
+        alert('更新失敗：' + e.message); 
+      }
     }
 
     function renderCrowdProbability() {
