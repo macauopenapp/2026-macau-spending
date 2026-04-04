@@ -14,7 +14,6 @@
     .card { background: white; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); border-radius: 24px; }
     .chip { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
     .chip.selected { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; transform: scale(1.05); box-shadow: 0 0 0 4px rgba(16,185,129,0.3); }
-    .chip.disabled { opacity: 0.4; pointer-events: none; }
     .prize-card { height: 108px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .prize-card.selected { background: linear-gradient(135deg, #10b981, #f59e0b); color: white; box-shadow: 0 0 0 4px rgba(16,185,129,0.3); transform: scale(1.08); }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }
@@ -24,18 +23,7 @@
     th, td { font-size: 14.5px; padding: 12px 8px; }
     .percent-cell { font-weight: 700; color: #10b981; }
     .chart-container { position: relative; height: 280px; margin-bottom: 20px; }
-
-    /* 針對剩餘彩池金額走位問題的專門優化 */
-    #remainingAmount {
-      font-size: 42px;          /* 固定大小，避免 text-5xl 在長數字時走位 */
-      line-height: 1;
-      font-weight: 700;
-      letter-spacing: -0.05em;  /* tracking-tighter */
-      font-family: ui-monospace, monospace; /* 數字更整齊 */
-    }
-    #remainingPoolCard {
-      padding: 28px 24px;       /* 加大內距，讓長數字與說明文字更有呼吸空間 */
-    }
+    #remainingAmount { font-size: 42px; line-height: 1; font-weight: 700; letter-spacing: -0.05em; font-family: ui-monospace, monospace; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
@@ -76,14 +64,20 @@
   <div id="page0" class="p-6">
     <div class="card p-6">
       <h2 class="text-2xl font-bold mb-8 text-center">新增抽獎記錄</h2>
+
+      <!-- Date Chips（已修正：目前測試階段所有日期都可選） -->
       <div class="mb-8">
         <label class="block text-sm font-medium mb-3 text-slate-600">抽獎日期</label>
         <div id="dateChips" class="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory"></div>
       </div>
+
+      <!-- Payment Chips -->
       <div class="mb-8">
         <label class="block text-sm font-medium mb-3 text-slate-600">支付系統</label>
         <div id="paymentChips" class="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory"></div>
       </div>
+
+      <!-- Prize Selection -->
       <div>
         <div class="flex justify-between items-center mb-4">
           <label class="text-sm font-medium text-slate-600">抽獎面額（最多選 3 次）</label>
@@ -91,11 +85,14 @@
         </div>
         <div id="prizeOptions" class="grid grid-cols-3 gap-4"></div>
       </div>
+
+      <!-- Instant Preview -->
       <div id="previewCard" class="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-5 hidden">
         <div class="text-sm text-slate-600 mb-2">本筆預覽</div>
         <div id="previewContent" class="flex justify-between text-base font-medium"></div>
       </div>
     </div>
+
     <button onclick="saveAndContribute()" id="mainBtn"
             class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">
       💾 儲存並貢獻全澳運勢
@@ -148,8 +145,6 @@
       <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><span>📈</span> 全澳中獎率趨勢（周別）</h3>
       <div class="bg-white rounded-3xl p-6"><canvas id="trendChart" height="220"></canvas></div>
     </div>
-
-    <!-- 預估剩餘彩池金額（已針對走位問題優化） -->
     <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-7 mb-8">
       <div class="text-center">
         <div class="text-sm opacity-90 mb-1 tracking-widest">預估剩餘彩池金額</div>
@@ -170,7 +165,6 @@
       </div>
       <div id="poolDetail" class="text-xs opacity-90 leading-relaxed"></div>
     </div>
-
     <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-8 text-sm"></div>
     <div class="mt-12">
       <h3 class="font-semibold mb-4 text-slate-600">詳細交叉分析（進階參考）</h3>
@@ -326,32 +320,28 @@
       setTimeout(() => canvas.remove(), 2000);
     }
 
+    // 【已修正】日期 Chips：目前測試階段全部日期都可選（不再灰掉）
     function renderDateChips() {
       const container = document.getElementById('dateChips');
       container.innerHTML = '';
-      const now = new Date();
-      dates.forEach(d => {
+      dates.forEach((d, index) => {
         const chip = document.createElement('button');
-        const datePart = d.split(' ')[0];
-        const isFuture = new Date(datePart) > now;
-        chip.className = `chip flex-shrink-0 px-7 py-4 rounded-3xl text-sm font-medium border border-slate-200 snap-center whitespace-nowrap ${isFuture ? 'disabled' : ''}`;
+        chip.className = `chip flex-shrink-0 px-7 py-4 rounded-3xl text-sm font-medium border border-slate-200 snap-center whitespace-nowrap`;
         chip.textContent = d;
-        if (!isFuture) {
-          chip.onclick = () => {
-            document.querySelectorAll('#dateChips .chip').forEach(el => el.classList.remove('selected'));
-            chip.classList.add('selected');
-            selectedDate = d;
-            document.getElementById('previewCard').classList.remove('hidden');
-            updatePreview();
-          };
-        }
+        chip.onclick = () => {
+          document.querySelectorAll('#dateChips .chip').forEach(el => el.classList.remove('selected'));
+          chip.classList.add('selected');
+          selectedDate = d;
+          document.getElementById('previewCard').classList.remove('hidden');
+          updatePreview();
+        };
         container.appendChild(chip);
+        // 預設選中第一個日期
+        if (index === 0) {
+          chip.classList.add('selected');
+          selectedDate = d;
+        }
       });
-      const firstAvailable = Array.from(container.children).find(c => !c.classList.contains('disabled'));
-      if (firstAvailable) {
-        firstAvailable.classList.add('selected');
-        selectedDate = firstAvailable.textContent;
-      }
     }
 
     function renderPaymentChips() {
@@ -483,6 +473,8 @@
       crowdData = snapshot.docs.map(doc => doc.data());
       renderCrowdProbability();
     }
+
+    // 其餘所有函數（renderMyStats、renderCrowdProbability、renderPaymentChart、renderWeeklyChart、renderHistoryList、deleteRecord、showEditModal、saveEdit、renderRemainingPool 等）與之前版本完全相同（為節省篇幅已省略，但完整包含在實際檔案中）
 
     function renderPaymentChart() {
       if (window.paymentChart && typeof window.paymentChart.destroy === 'function') window.paymentChart.destroy();
