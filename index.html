@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -25,30 +24,22 @@
       <p class="text-xs text-slate-500">2026 • 一站式記錄 + 全澳概率</p>
     </div>
 
-  <!-- 登入 Modal（已優化：只需輸入8位） -->
-<div id="loginModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
-  <div class="bg-white rounded-3xl p-8 max-w-sm w-full mx-4">
-    <h3 class="text-2xl font-semibold mb-6">澳門電話登入</h3>
-    
-    <div id="phoneStep">
-      <label class="block text-sm text-slate-500 mb-1">澳門電話號碼（8位數字）</label>
-      <input id="phoneInput" type="tel" maxlength="8" placeholder="65341234" 
-             class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg text-center font-mono">
-      <p class="text-xs text-slate-400 mt-2">系統會自動加上 +853 區號，無需手動輸入</p>
-      <button onclick="sendVerificationCode()" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white py-4 rounded-3xl text-lg font-medium">發送驗證碼</button>
+    <!-- 登入 Modal（純 Google，最簡潔版） -->
+    <div id="loginModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+      <div class="bg-white rounded-3xl p-8 max-w-sm w-full mx-4">
+        <h3 class="text-2xl font-semibold mb-8 text-center">以 Google 帳戶登入</h3>
+        
+        <button onclick="googleLogin()" 
+                class="w-full bg-white border border-slate-300 hover:border-slate-400 py-6 rounded-3xl flex items-center justify-center gap-3 text-xl font-medium shadow-sm">
+          <span class="text-3xl">G</span> 
+          <span>繼續以 Google 登入</span>
+        </button>
+        
+        <p class="text-xs text-slate-400 text-center mt-8">只需 1 秒登入 • 資料雲端同步 • 零成本</p>
+        
+        <button onclick="closeModal()" class="mt-8 text-slate-400 hover:text-slate-600 block mx-auto">取消</button>
+      </div>
     </div>
-    
-    <div id="codeStep" class="hidden">
-      <label class="block text-sm text-slate-500 mb-2">6位驗證碼</label>
-      <input id="codeInput" type="text" maxlength="6" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg text-center tracking-[0.5em]">
-      <button onclick="verifyCode()" class="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-3xl text-lg font-medium">確認登入</button>
-    </div>
-    
-    <div id="recaptcha-container" class="hidden"></div>
-    
-    <button onclick="closeModal()" class="mt-6 text-slate-400 hover:text-slate-600 block mx-auto">取消</button>
-  </div>
-</div>
 
     <!-- 底部導航 -->
     <div class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t flex z-50">
@@ -62,7 +53,6 @@
       <div class="card rounded-3xl p-6">
         <h2 class="text-xl font-semibold mb-6">新增抽獎記錄</h2>
         <div class="space-y-6">
-          <!-- 原有日期、支付、面額選項保持不變 -->
           <div>
             <label class="block text-xs uppercase tracking-widest text-slate-500 mb-1">抽獎日期</label>
             <select id="dateSelect" class="w-full border border-slate-200 rounded-2xl px-5 py-4 text-base"></select>
@@ -100,7 +90,7 @@
   </div>
 
   <script>
-    // ========== 你的真實 firebaseConfig（已嵌入）==========
+    // ========== 你的 firebaseConfig ==========
     const firebaseConfig = {
       apiKey: "AIzaSyDoTWA37Rhc3Fre-Y6uSOZIgfBLh9iDin4",
       authDomain: "macau-rewards-2026.firebaseapp.com",
@@ -125,16 +115,12 @@
     const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
     const prizes = [0,10,20,50,100,200];
 
-    let verifier;
-
     function init() {
-      // 原有下拉選單與面額按鈕初始化（完全保留）
+      // 初始化下拉選單與面額按鈕
       const ds = document.getElementById('dateSelect');
       dates.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
-      
       const ps = document.getElementById('paymentSelect');
       payments.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; ps.appendChild(o); });
-
       const po = document.getElementById('prizeOptions');
       prizes.forEach(p => {
         const btn = document.createElement('button');
@@ -154,58 +140,23 @@
       });
     }
 
-    async function loadCrowdData() {
-      Papa.parse(CSV_URL, {download: true, header: true, complete: (res) => {
-        crowdData = res.data.filter(r => r.抽獎日期);
-        renderCrowdProbability();
-      }});
-    }
-
-    // ========== 雲端登入流程 ==========
-async function sendVerificationCode() {
-  const input = document.getElementById('phoneInput').value.trim();
-  
-  // 只允許8位數字
-  if (!/^\d{8}$/.test(input)) {
-    return alert('請輸入完整的8位澳門電話號碼（例如：65341234）');
-  }
-  
-  const phone = '+853' + input;
-  
-  // 先清理舊 reCAPTCHA
-  if (verifier) {
-    verifier.clear();
-    verifier = null;
-  }
-
-  verifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-    size: 'invisible'
-  });
-
-  try {
-    const confirmationResult = await auth.signInWithPhoneNumber(phone, verifier);
-    window.confirmationResult = confirmationResult;
-    document.getElementById('phoneStep').classList.add('hidden');
-    document.getElementById('codeStep').classList.remove('hidden');
-  } catch (e) {
-    alert('發送失敗：' + e.message + '\n\n請確認電話號碼正確，並檢查網路');
-  }
-}
-
-    async function verifyCode() {
-      const code = document.getElementById('codeInput').value;
+    // Google 登入（最簡單版）
+    async function googleLogin() {
+      const provider = new firebase.auth.GoogleAuthProvider();
       try {
-        await window.confirmationResult.confirm(code);
-        alert('✅ 登入成功！資料已雲端同步');
+        await auth.signInWithPopup(provider);
         closeModal();
-      } catch (e) { alert('驗證失敗，請重試'); }
+        alert('✅ Google 登入成功！\n\n資料已雲端同步，現在可以開始記錄抽獎');
+      } catch (e) {
+        alert('Google 登入失敗：' + e.message);
+      }
     }
 
     function closeModal() {
       document.getElementById('loginModal').classList.add('hidden');
     }
 
-    // ========== 雲端儲存 ==========
+    // 雲端儲存
     async function saveToMyAccount() {
       if (!currentUser) {
         document.getElementById('loginModal').classList.remove('hidden');
@@ -236,13 +187,7 @@ async function sendVerificationCode() {
       renderMyStats();
     }
 
-    async function deleteRecord(recordId) {
-      if (!confirm('確認刪除這筆記錄？')) return;
-      await db.collection('personalRecords').doc(recordId).delete();
-      await loadPersonalRecords();
-    }
-
-    // ========== KPI 計算與每週提醒 ==========
+    // KPI 計算
     function calculateKPIs(records) {
       if (!records.length) return {total: 0, totalPrize: 0, winRate: 0, avg: 0};
       const total = records.length;
@@ -272,7 +217,6 @@ async function sendVerificationCode() {
         <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${kpis.winRate}%</div><div class="text-xs text-slate-500">整體中獎率</div></div>
       `;
 
-      // 記錄列表（可刪除）
       let html = `<div class="mt-8 bg-white rounded-3xl overflow-hidden"><table class="w-full text-sm"><thead><tr class="bg-slate-100"><th class="p-3">日期</th><th class="p-3">支付</th><th class="p-3">面額</th><th class="p-3"></th></tr></thead><tbody>`;
       personalRecords.forEach(r => {
         html += `<tr class="border-b"><td class="p-3">${r.date}</td><td class="p-3">${r.payment}</td><td class="p-3 font-medium">${r.prize}元</td><td class="p-3"><button onclick="deleteRecord('${r.id}')" class="text-red-500 text-xs">刪除</button></td></tr>`;
@@ -282,7 +226,6 @@ async function sendVerificationCode() {
 
       if (weekly >= 20) alert(`⚠️ 本週已使用 ${weekly} 次（官方上限 24 次），請留意規則！`);
 
-      // 面額分佈圖
       new Chart(document.getElementById('myChart'), {
         type: 'bar',
         data: {
@@ -293,7 +236,13 @@ async function sendVerificationCode() {
       });
     }
 
-    // ========== 全澳概率（加強版） ==========
+    async function deleteRecord(recordId) {
+      if (!confirm('確認刪除這筆記錄？')) return;
+      await db.collection('personalRecords').doc(recordId).delete();
+      await loadPersonalRecords();
+    }
+
+    // 全澳概率（已包含期望值）
     function renderCrowdProbability() {
       const sampleDiv = document.getElementById('totalSamples');
       const tableDiv = document.getElementById('probTable');
@@ -307,7 +256,6 @@ async function sendVerificationCode() {
       sampleDiv.innerHTML = `全澳總樣本數：${crowdData.length} 筆<br>
         <span class="text-emerald-600 font-medium">整體中獎率 ${kpis.winRate}% • 期望值 $${kpis.avg}元 • 200元大獎率 ${twoHundredRate}%</span>`;
 
-      // 原有表格保持 + 加強
       let html = `<table class="w-full text-sm"><thead><tr class="bg-slate-100"><th class="p-3">週數</th><th class="p-3">總次數</th>`;
       prizes.forEach(p => html += `<th class="p-3">${p}元 (%)</th>`);
       html += `</tr></thead><tbody>`;
@@ -328,8 +276,14 @@ async function sendVerificationCode() {
       tableDiv.innerHTML = html;
     }
 
+    async function loadCrowdData() {
+      Papa.parse(CSV_URL, {download: true, header: true, complete: (res) => {
+        crowdData = res.data.filter(r => r.抽獎日期);
+        renderCrowdProbability();
+      }});
+    }
+
     async function uploadToSheet() {
-      // 原有上傳邏輯保持不變
       const btn = document.getElementById('uploadBtn');
       btn.disabled = true; btn.textContent = '上傳中...';
       const date = document.getElementById('dateSelect').value;
@@ -340,7 +294,7 @@ async function sendVerificationCode() {
       try {
         const promises = selected.map(prize => fetch(UPLOAD_URL, {method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({date, payment, prize})}));
         await Promise.all(promises);
-        alert('✅ 上傳請求已送出！請稍後刷新全澳概率');
+        alert('✅ 上傳請求已送出！');
         loadCrowdData();
       } catch (e) { alert('錯誤：' + e.message); } finally {
         btn.disabled = false; btn.textContent = '☁️ 上傳到全澳統計';
