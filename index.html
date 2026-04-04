@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026澳門消費大獎賞 記帳監督器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .tab-active { border-bottom: 4px solid #dc2626; color: #dc2626; font-weight: 700; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="max-w-2xl mx-auto bg-white shadow-2xl min-h-screen">
+    <!-- 標題 -->
+    <div class="bg-red-600 text-white p-6 text-center">
+      <h1 class="text-3xl font-bold">🎟️ 2026社區消費大獎賞</h1>
+      <p class="mt-1 opacity-90">個人記帳 + 全澳眾包概率監督器</p>
+    </div>
+
+    <!-- 導航 -->
+    <div class="flex border-b sticky top-0 bg-white z-10">
+      <button onclick="switchTab(0)" id="tab0" class="flex-1 py-4 tab-active">📝 記錄抽獎</button>
+      <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4">📊 我的統計</button>
+      <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4">🧮 全澳概率</button>
+    </div>
+
+    <!-- Page 1: 記錄 -->
+    <div id="page0" class="p-6">
+      <h2 class="text-2xl font-bold mb-6">新增抽獎記錄</h2>
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm mb-1 font-medium">抽獎日期</label>
+          <select id="dateSelect" class="w-full border rounded-xl p-4 text-lg"></select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 font-medium">支付系統</label>
+          <select id="paymentSelect" class="w-full border rounded-xl p-4 text-lg"></select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 font-medium">抽獎面額（可多選）</label>
+          <div class="grid grid-cols-3 gap-3" id="prizeOptions"></div>
+        </div>
+      </div>
+      <button onclick="saveRecord()" class="mt-8 w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-3xl text-xl font-bold">✅ 儲存這筆記錄</button>
+      <button onclick="jumpToForm()" class="mt-4 w-full bg-green-600 text-white py-5 rounded-3xl text-xl font-bold">🚀 匿名貢獻到全澳統計</button>
+    </div>
+
+    <!-- Page 2: 我的統計 -->
+    <div id="page1" class="p-6 hidden">
+      <h2 class="text-2xl font-bold mb-6">我的抽獎統計</h2>
+      <div id="myStats" class="space-y-6"></div>
+      <canvas id="myChart" class="mt-8"></canvas>
+    </div>
+
+    <!-- Page 3: 全澳概率（重點） -->
+    <div id="page2" class="p-6 hidden">
+      <h2 class="text-2xl font-bold mb-6">🧮 每週中獎概率（全澳眾包）</h2>
+      <div id="totalSamples" class="bg-yellow-50 p-4 rounded-2xl mb-6 text-center font-medium"></div>
+      <div id="probTable" class="overflow-x-auto"></div>
+      <canvas id="probChart" class="mt-10"></canvas>
+    </div>
+
+    <!-- 浮動微信分享 -->
+    <div class="fixed bottom-8 right-6 flex flex-col gap-3">
+      <button onclick="copyLink()" class="bg-white shadow-2xl text-red-600 px-6 py-3 rounded-3xl font-bold flex items-center gap-2">
+        📤 微信分享
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ================== 配置 ==================
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/13NIz--Oa5Oh2QY_GpW_huTj3gCAdJaMZpPmCf1oOPq8/export?format=csv&gid=0";
+    const FORM_URL = "https://forms.google.com/你的問卷連結"; // ← 請把你的Google Form連結貼這裡
+
+    let personalRecords = JSON.parse(localStorage.getItem('spendingRecords')) || [];
+    let crowdData = [];
+
+    const dates = ["2026-04-10 第1週 周五","2026-04-11 第1週 周六","2026-04-12 第1週 周日","2026-04-17 第2週 周五","2026-04-18 第2週 周六","2026-04-19 第2週 周日","2026-04-24 第3週 周五","2026-04-25 第3週 周六","2026-04-26 第3週 周日","2026-05-01 第4週 周五","2026-05-02 第4週 周六","2026-05-03 第4週 周日","2026-05-08 第5週 周五","2026-05-09 第5週 周六","2026-05-10 第5週 周日","2026-05-15 第6週 周五","2026-05-16 第6週 周六","2026-05-17 第6週 周日","2026-05-22 第7週 周五","2026-05-23 第7週 周六","2026-05-24 第7週 周日","2026-05-29 第8週 周五","2026-05-30 第8週 周六","2026-05-31 第8週 周日","2026-06-05 第9週 周五","2026-06-06 第9週 周六","2026-06-07 第9週 周日","2026-06-12 第10週 周五","2026-06-13 第10週 周六","2026-06-14 第10週 周日"];
+
+    const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
+    const prizes = [0,10,20,50,100,200];
+
+    // ================== 初始化 ==================
+    function init() {
+      // 日期選單
+      const dateSel = document.getElementById('dateSelect');
+      dates.forEach(d => { const opt = document.createElement('option'); opt.value = d; opt.textContent = d; dateSel.appendChild(opt); });
+
+      // 支付系統
+      const paySel = document.getElementById('paymentSelect');
+      payments.forEach(p => { const opt = document.createElement('option'); opt.value = p; opt.textContent = p; paySel.appendChild(opt); });
+
+      // 面額按鈕
+      const prizeDiv = document.getElementById('prizeOptions');
+      prizes.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'border-2 border-gray-300 hover:border-red-600 rounded-2xl py-6 text-2xl font-bold transition-all active:scale-95';
+        btn.textContent = p + '元';
+        btn.onclick = () => btn.classList.toggle('border-red-600');
+        prizeDiv.appendChild(btn);
+      });
+
+      loadCrowdData();
+      renderMyStats();
+      switchTab(0);
+    }
+
+    // ================== 載入全澳數據 ==================
+    async function loadCrowdData() {
+      Papa.parse(CSV_URL, {
+        download: true,
+        header: true,
+        complete: (results) => {
+          crowdData = results.data.filter(r => r.抽獎日期 && r.抽獎面額);
+          renderCrowdProbability();
+        }
+      });
+    }
+
+    // ================== 儲存個人記錄 ==================
+    function saveRecord() {
+      const date = document.getElementById('dateSelect').value;
+      const payment = document.getElementById('paymentSelect').value;
+      const selectedPrizes = Array.from(document.querySelectorAll('#prizeOptions button.border-red-600')).map(b => parseInt(b.textContent));
+
+      if (selectedPrizes.length === 0) return alert('請至少選一個面額');
+
+      selectedPrizes.forEach(p => {
+        personalRecords.push({date, payment, prize: p});
+      });
+
+      localStorage.setItem('spendingRecords', JSON.stringify(personalRecords));
+      alert('✅ 已儲存！');
+      renderMyStats();
+    }
+
+    // ================== 我的統計 ==================
+    function renderMyStats() {
+      const container = document.getElementById('myStats');
+      if (personalRecords.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-center py-12">還沒有記錄，快去記錄吧！</p>`;
+        return;
+      }
+
+      let html = `<div class="grid grid-cols-3 gap-4 text-center">
+        <div class="bg-gray-50 p-4 rounded-2xl"><div class="text-3xl font-bold">${personalRecords.length}</div><div class="text-xs text-gray-500">總抽獎次數</div></div>
+        <div class="bg-gray-50 p-4 rounded-2xl"><div class="text-3xl font-bold">${personalRecords.reduce((a,r)=>a+r.prize,0)}</div><div class="text-xs text-gray-500">總中獎金額</div></div>
+        <div class="bg-gray-50 p-4 rounded-2xl"><div class="text-3xl font-bold">${(personalRecords.filter(r=>r.prize>0).length / personalRecords.length * 100).toFixed(1)}%</div><div class="text-xs text-gray-500">中獎率</div></div>
+      </div>`;
+      container.innerHTML = html;
+
+      // 簡單柱狀圖
+      new Chart(document.getElementById('myChart'), { type: 'bar', data: { labels: prizes, datasets: [{ label: '我的面額分佈', data: prizes.map(p => personalRecords.filter(r=>r.prize===p).length), backgroundColor: '#dc2626' }] } });
+    }
+
+    // ================== 全澳概率表格與圖表 ==================
+    function renderCrowdProbability() {
+      const tableDiv = document.getElementById('probTable');
+      const sampleDiv = document.getElementById('totalSamples');
+      sampleDiv.textContent = `全澳總樣本數：${crowdData.length} 筆（持續更新中）`;
+
+      let tableHTML = `<table class="w-full border-collapse text-sm"><thead><tr class="bg-gray-100"><th class="p-3 text-left">週數</th><th class="p-3">總次數</th>`;
+      [0,10,20,50,100,200].forEach(p => tableHTML += `<th class="p-3">${p}元 (%)</th>`);
+      tableHTML += `</tr></thead><tbody>`;
+
+      for (let w = 1; w <= 10; w++) {
+        const weekData = crowdData.filter(r => r.抽獎日期.includes(`第${w}週`));
+        if (weekData.length === 0) continue;
+        const total = weekData.length;
+        let row = `<tr class="border-b"><td class="p-3 font-medium">第${w}週</td><td class="p-3 text-center">${total}</td>`;
+        [0,10,20,50,100,200].forEach(p => {
+          const count = weekData.filter(r => parseInt(r.抽獎面額) === p).length;
+          const percent = (count / total * 100).toFixed(1);
+          row += `<td class="p-3 text-center">${count} <span class="text-xs text-gray-500">(${percent}%)</span></td>`;
+        });
+        tableHTML += row + '</tr>';
+      }
+      tableHTML += `</tbody></table>`;
+      tableDiv.innerHTML = tableHTML;
+
+      // 堆疊柱狀圖
+      new Chart(document.getElementById('probChart'), {
+        type: 'bar',
+        data: { labels: Array.from({length:10},(_,i)=>`第${i+1}週`), datasets: [0,10,20,50,100,200].map((p,i) => ({ label: p+'元', data: Array.from({length:10},(_,w)=> crowdData.filter(r=>r.抽獎日期.includes(`第${w+1}週`) && parseInt(r.抽獎面額)===p).length), backgroundColor: ['#ef4444','#f59e0b','#eab308','#84cc16','#22c55e','#06b67f'][i] })) },
+        options: { scales: { x: { stacked: true }, y: { stacked: true } } }
+      });
+    }
+
+    function switchTab(n) {
+      for (let i=0; i<3; i++) {
+        document.getElementById('page'+i).classList.add('hidden');
+        document.getElementById('tab'+i).classList.remove('tab-active');
+      }
+      document.getElementById('page'+n).classList.remove('hidden');
+      document.getElementById('tab'+n).classList.add('tab-active');
+    }
+
+    function jumpToForm() {
+      if (FORM_URL.includes('你的問卷連結')) {
+        alert('請先把你的Google Form連結貼到程式碼第28行 FORM_URL 位置，再重新上傳！');
+      } else {
+        window.open(FORM_URL, '_blank');
+      }
+    }
+
+    function copyLink() {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => alert('✅ 連結已複製！直接貼到微信分享'));
+    }
+
+    // 啟動
+    window.onload = init;
+  </script>
+</body>
+</html>
