@@ -22,6 +22,7 @@
     th, td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
     th { background: #f8fafc; font-weight: 600; white-space: nowrap; }
     .percent-cell { font-weight: 600; color: #10b981; }
+    .highlight-card { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
   </style>
 </head>
 <body class="bg-[#f8fafc] text-[#1e2937] min-h-screen pb-20">
@@ -89,36 +90,50 @@
       <div id="weeklyWarning" class="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm hidden"></div>
     </div>
 
-    <!-- Page 3: 全澳運勢（重點突出中獎率、平均金額、面額分佈） -->
+    <!-- Page 3: 全澳運勢（已優化加入中獎率趨勢圖） -->
     <div id="page2" class="p-6 hidden">
       <h2 class="text-2xl font-semibold mb-6">全澳運勢</h2>
-      
-      <!-- 最顯眼的核心統計卡（市民最想看的） -->
-      <div id="coreStatsCard" class="bg-white rounded-3xl p-6 mb-8 text-center">
+
+      <!-- 三大核心指標（最醒目） -->
+      <div id="coreStatsCard" class="highlight-card rounded-3xl p-8 mb-8 text-center text-white">
         <div class="grid grid-cols-3 gap-6">
           <div>
-            <div class="text-xs text-slate-500">全澳總樣本</div>
-            <div id="totalSamplesBig" class="text-5xl font-bold text-emerald-600"></div>
+            <div class="text-xs opacity-90 mb-1">全澳總樣本</div>
+            <div id="totalSamplesBig" class="text-6xl font-bold"></div>
           </div>
           <div>
-            <div class="text-xs text-slate-500">整體中獎率</div>
-            <div id="winRateBig" class="text-5xl font-bold text-amber-600"></div>
+            <div class="text-xs opacity-90 mb-1">整體中獎率</div>
+            <div id="winRateBig" class="text-6xl font-bold"></div>
           </div>
           <div>
-            <div class="text-xs text-slate-500">平均每抽金額</div>
-            <div id="avgPrizeBig" class="text-5xl font-bold text-sky-600"></div>
+            <div class="text-xs opacity-90 mb-1">平均每抽金額</div>
+            <div id="avgPrizeBig" class="text-6xl font-bold"></div>
           </div>
         </div>
       </div>
 
-      <!-- 面額分佈（重點強調） -->
-      <div class="mb-8">
-        <h3 class="font-semibold mb-3">各抽獎面額分佈</h3>
-        <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
-        <canvas id="probChart" class="mt-6"></canvas>
+      <!-- 面額分佈 -->
+      <div class="mb-10">
+        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+          <span>📊</span> 各抽獎面額分佈
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
+          <canvas id="probChart" class="bg-white rounded-3xl p-6"></canvas>
+        </div>
       </div>
 
-      <!-- 預估剩餘彩池（放在下方，附清晰說明） -->
+      <!-- 新增：中獎率趨勢圖（重點功能） -->
+      <div class="mb-10">
+        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+          <span>📈</span> 全澳中獎率趨勢（週別）
+        </h3>
+        <div class="bg-white rounded-3xl p-6">
+          <canvas id="trendChart" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- 預估剩餘彩池 -->
       <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-6 mb-8">
         <div class="flex justify-between items-start mb-4">
           <div>
@@ -143,15 +158,12 @@
         <div id="poolDetail" class="text-xs opacity-90 leading-relaxed"></div>
       </div>
 
-      <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-6 text-sm"></div>
+      <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-8 text-sm"></div>
 
-      <!-- 交叉表格 -->
+      <!-- 詳細交叉分析 -->
       <div class="mt-12">
-        <h3 class="font-semibold mb-4">周數 × 支付系統 交叉統計</h3>
-        <div id="crossPaymentTable" class="bg-white rounded-3xl overflow-auto"></div>
-      </div>
-      <div class="mt-12">
-        <h3 class="font-semibold mb-4">周數 × 中獎面額 交叉統計</h3>
+        <h3 class="font-semibold mb-4 text-slate-600">詳細交叉分析（進階參考）</h3>
+        <div id="crossPaymentTable" class="bg-white rounded-3xl overflow-auto mb-8"></div>
         <div id="crossPrizeTable" class="bg-white rounded-3xl overflow-auto"></div>
       </div>
     </div>
@@ -202,7 +214,7 @@
     const dates = ["2026-04-10 第1週 周五","2026-04-11 第1週 周六","2026-04-12 第1週 周日","2026-04-17 第2週 周五","2026-04-18 第2週 周六","2026-04-19 第2週 周日","2026-04-24 第3週 周五","2026-04-25 第3週 周六","2026-04-26 第3週 周日","2026-05-01 第4週 周五","2026-05-02 第4週 周六","2026-05-03 第4週 周日","2026-05-08 第5週 周五","2026-05-09 第5週 周六","2026-05-10 第5週 周日","2026-05-15 第6週 周五","2026-05-16 第6週 周六","2026-05-17 第6週 周日","2026-05-22 第7週 周五","2026-05-23 第7週 周六","2026-05-24 第7週 周日","2026-05-29 第8週 周五","2026-05-30 第8週 周六","2026-05-31 第8週 周日","2026-06-05 第9週 周五","2026-06-06 第9週 周六","2026-06-07 第9週 周日","2026-06-12 第10週 周五","2026-06-13 第10週 周六","2026-06-14 第10週 周日"];
     const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
     const prizes = [0,10,20,50,100,200];
-    const TOTAL_POOL = 320000000;   // 官方電子優惠券彩池 3.2億
+    const TOTAL_POOL = 320000000;
     const weekRanges = {1:"4/10-4/12",2:"4/17-4/19",3:"4/24-4/26",4:"5/1-5/3",5:"5/8-5/10",6:"5/15-5/17",7:"5/22-5/24",8:"5/29-5/31",9:"6/5-6/7",10:"6/12-6/14"};
 
     function getWeekNumber(dateStr) {
@@ -236,12 +248,6 @@
       const disbursed = avg * effectiveDraws;
       const remaining = Math.max(0, TOTAL_POOL - disbursed);
       return { remaining: Math.round(remaining), avg: avg.toFixed(1), disbursed: Math.round(disbursed) };
-    }
-
-    function getReliabilityMessage(count) {
-      if (count < 385) return `目前樣本數較少（${count} 筆），數據僅供參考。<br><span class="text-rose-600">請繼續記錄並分享此App！</span>`;
-      if (count < 1067) return `數據中等可信（${count} 筆）`;
-      return `數據高可信度（${count} 筆），已具全澳代表性！`;
     }
 
     function suggestTotalDraws() {
@@ -459,12 +465,12 @@
       const avgPrize = total ? (totalPrizeAmount / total).toFixed(1) : '0';
       const winRate = total ? ((wins / total) * 100).toFixed(1) : '0';
 
-      // 核心統計卡（最顯眼）
-      document.getElementById('totalSamplesBig').textContent = total;
+      // 三大核心指標
+      document.getElementById('totalSamplesBig').textContent = total.toLocaleString();
       document.getElementById('winRateBig').textContent = winRate + '%';
       document.getElementById('avgPrizeBig').textContent = '$' + avgPrize;
 
-      // 面額分佈表格
+      // 面額表格
       let html = `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="px-6 py-3 text-left">面額</th><th class="px-6 py-3 text-center">次數</th><th class="px-6 py-3 text-center">概率</th></tr></thead><tbody class="divide-y">`;
       [0,10,20,50,100,200].forEach(p => {
         const count = prizeCount[p];
@@ -483,7 +489,60 @@
         options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
       });
 
-      // 上限說明
+      // ============ 新增：中獎率趨勢圖 ============
+      const weeklyData = {};
+      dates.forEach(d => {
+        const week = getWeekNumber(d);
+        if (!weeklyData[week]) weeklyData[week] = {total: 0, wins: 0};
+      });
+      crowdData.forEach(r => {
+        const week = getWeekNumber(r.date);
+        if (weeklyData[week]) {
+          weeklyData[week].total++;
+          if (r.prize > 0) weeklyData[week].wins++;
+        }
+      });
+
+      const weekLabels = [];
+      const winRateData = [];
+      Object.keys(weeklyData).sort((a,b) => a - b).forEach(week => {
+        weekLabels.push(`第${week}週`);
+        const d = weeklyData[week];
+        const rate = d.total ? ((d.wins / d.total) * 100).toFixed(1) : 0;
+        winRateData.push(parseFloat(rate));
+      });
+
+      const trendCtx = document.getElementById('trendChart');
+      if (window.myTrendChart) window.myTrendChart.destroy();
+      window.myTrendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: weekLabels,
+          datasets: [{
+            label: '中獎率 (%)',
+            data: winRateData,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4,
+            borderWidth: 3,
+            pointBackgroundColor: '#10b981',
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 100, title: { display: true, text: '中獎率 (%)' } },
+            x: { title: { display: true, text: '週別' } }
+          }
+        }
+      });
+
+      // 剩餘彩池
+      renderRemainingPool();
+
+      // 上限提醒
       document.getElementById('upperLimits').innerHTML = `
         <div class="flex items-start gap-3">
           <span class="text-2xl">📌</span>
@@ -497,7 +556,7 @@
         </div>
       `;
 
-      // 交叉表格（保持）
+      // 交叉表格（保持不變）
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
@@ -535,8 +594,6 @@
       });
       prizeHTML += `</tbody></table>`;
       document.getElementById('crossPrizeTable').innerHTML = prizeHTML;
-
-      renderRemainingPool();
     }
 
     function switchTab(n) {
