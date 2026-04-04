@@ -402,7 +402,10 @@
     }
 
     function renderMyStats() {
-      if (window.myChart) window.myChart.destroy();
+      // 修正重點：安全檢查 destroy 是否存在
+      if (window.myChart && typeof window.myChart.destroy === 'function') {
+        window.myChart.destroy();
+      }
 
       const container = document.getElementById('myStats');
       if (personalRecords.length === 0) {
@@ -528,9 +531,9 @@
       html += `</tbody></table></div>`;
       document.getElementById('probTable').innerHTML = html;
 
-      const ctx = document.getElementById('probChart');
-      if (window.myProbChart) window.myProbChart.destroy();
-      window.myProbChart = new Chart(ctx, {
+      // 修正重點：安全檢查 destroy
+      if (window.myProbChart && typeof window.myProbChart.destroy === 'function') window.myProbChart.destroy();
+      window.myProbChart = new Chart(document.getElementById('probChart'), {
         type: 'doughnut',
         data: { labels: ['未中獎','10元','20元','50元','100元','200元'], datasets: [{ data: Object.values(prizeCount), backgroundColor: ['#64748b','#22c55e','#eab308','#3b82f6','#a855f7','#ec4899'] }] },
         options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
@@ -559,7 +562,7 @@
       });
 
       const trendCtx = document.getElementById('trendChart');
-      if (window.myTrendChart) window.myTrendChart.destroy();
+      if (window.myTrendChart && typeof window.myTrendChart.destroy === 'function') window.myTrendChart.destroy();
       window.myTrendChart = new Chart(trendCtx, {
         type: 'line',
         data: {
@@ -600,6 +603,7 @@
         </div>
       `;
 
+      // 交叉分析表（保持不變）
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
@@ -675,7 +679,7 @@
     function switchTab(n) {
       for (let i = 0; i < 3; i++) document.getElementById('page' + i).classList.add('hidden');
       document.getElementById('page' + n).classList.remove('hidden');
-      if (n === 1 && currentUser) renderMyStats();   // ← 修正重點：完整刷新我的戰績
+      if (n === 1 && currentUser) renderMyStats();
       if (n === 2) renderCrowdProbability();
     }
 
