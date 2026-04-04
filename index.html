@@ -358,7 +358,7 @@ fetch(GAS_WEB_APP_URL, {
     showToast("上傳失敗，請檢查網路或控制台日誌", "error");
     console.error("Fetch 請求失敗:", error);
 });
-
+}
         // --- 統計與圖表邏輯 ---
         function loadMyStats() {
             const records = JSON.parse(localStorage.getItem('macau_rewards_2026') || '[]');
