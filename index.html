@@ -95,21 +95,27 @@
     <div id="page2" class="p-6 hidden">
       <h2 class="text-2xl font-semibold mb-6">全澳運勢</h2>
       
-      <!-- 預估剩餘彩池（新推算邏輯） -->
+      <!-- 預估剩餘彩池（已修正推算邏輯 + 過期失效考慮） -->
       <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-6 mb-6">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-start mb-4">
           <div>
             <div class="text-lg font-medium">預估剩餘彩池金額</div>
             <div id="remainingAmount" class="text-5xl font-bold"></div>
           </div>
-          <div class="text-right">
-            <div class="text-xs opacity-90">總彩池 4 億澳門元</div>
-            <input id="estimatedDraws" type="number" value="500000" 
-                   class="mt-2 w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
-            <div class="text-[10px] opacity-75 mt-1">預估全澳總抽獎筆數</div>
+          <div class="text-right space-y-3">
+            <div>
+              <input id="estimatedDraws" type="number" value="500000" 
+                     class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
+              <div class="text-[10px] opacity-75">預估全澳總抽獎筆數</div>
+            </div>
+            <div>
+              <input id="usageRate" type="number" value="82" min="1" max="100"
+                     class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
+              <div class="text-[10px] opacity-75">% 使用率（考慮過期）</div>
+            </div>
           </div>
         </div>
-        <div id="poolDetail" class="text-xs opacity-90"></div>
+        <div id="poolDetail" class="text-xs opacity-90 leading-relaxed"></div>
       </div>
 
       <div id="totalSamples" class="bg-white rounded-3xl p-5 text-center mb-6 font-medium"></div>
@@ -119,13 +125,13 @@
       <div id="probTable" class="bg-white rounded-3xl overflow-hidden"></div>
       <canvas id="probChart" class="mt-8"></canvas>
 
-      <!-- 優化後交叉表格 1 -->
+      <!-- 周數 × 支付系統 交叉表格 -->
       <div class="mt-12">
         <h3 class="font-semibold mb-4">周數 × 支付系統 交叉統計</h3>
         <div id="crossPaymentTable" class="bg-white rounded-3xl overflow-auto"></div>
       </div>
 
-      <!-- 優化後交叉表格 2 -->
+      <!-- 周數 × 中獎面額 交叉表格 -->
       <div class="mt-12">
         <h3 class="font-semibold mb-4">周數 × 中獎面額 交叉統計</h3>
         <div id="crossPrizeTable" class="bg-white rounded-3xl overflow-auto"></div>
@@ -175,8 +181,9 @@
     let selectedPrizes = [];
     let editingRecordId = null;
 
+    // 僅保留8個支付系統（已移除 BOCPay）
     const dates = ["2026-04-10 第1週 周五","2026-04-11 第1週 周六","2026-04-12 第1週 周日","2026-04-17 第2週 周五","2026-04-18 第2週 周六","2026-04-19 第2週 周日","2026-04-24 第3週 周五","2026-04-25 第3週 周六","2026-04-26 第3週 周日","2026-05-01 第4週 周五","2026-05-02 第4週 周六","2026-05-03 第4週 周日","2026-05-08 第5週 周五","2026-05-09 第5週 周六","2026-05-10 第5週 周日","2026-05-15 第6週 周五","2026-05-16 第6週 周六","2026-05-17 第6週 周日","2026-05-22 第7週 周五","2026-05-23 第7週 周六","2026-05-24 第7週 周日","2026-05-29 第8週 周五","2026-05-30 第8週 周六","2026-05-31 第8週 周日","2026-06-05 第9週 周五","2026-06-06 第9週 周六","2026-06-07 第9週 周日","2026-06-12 第10週 周五","2026-06-13 第10週 周六","2026-06-14 第10週 周日"];
-    const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","BOCPay","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
+    const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
     const prizes = [0,10,20,50,100,200];
     const TOTAL_POOL = 400000000;
     const weekRanges = {1:"4/10-4/12",2:"4/17-4/19",3:"4/24-4/26",4:"5/1-5/3",5:"5/8-5/10",6:"5/15-5/17",7:"5/22-5/24",8:"5/29-5/31",9:"6/5-6/7",10:"6/12-6/14"};
@@ -198,21 +205,18 @@
       });
     }
 
-    // 全局刷新函數（解決同步問題）
     async function refreshAllData() {
       if (currentUser) await loadPersonalRecords();
       await loadCrowdData();
     }
 
-    function calculatePoolStats(estimatedDraws) {
+    function calculatePoolStats(estimatedDraws, usageRate) {
       if (crowdData.length === 0) return { remaining: TOTAL_POOL, avg: 0, disbursed: 0 };
-      let totalPrize = 0, wins = 0;
-      crowdData.forEach(r => {
-        totalPrize += (r.prize || 0);
-        if (r.prize > 0) wins++;
-      });
+      let totalPrize = 0;
+      crowdData.forEach(r => totalPrize += (r.prize || 0));
       const avg = totalPrize / crowdData.length;
-      const disbursed = avg * estimatedDraws;
+      const effectiveDraws = estimatedDraws * (usageRate / 100);
+      const disbursed = avg * effectiveDraws;
       const remaining = Math.max(0, TOTAL_POOL - disbursed);
       return { remaining: Math.round(remaining), avg: avg.toFixed(1), disbursed: Math.round(disbursed) };
     }
@@ -270,8 +274,9 @@
         po.appendChild(btn);
       });
 
-      // 預估筆數輸入即時更新彩池
-      document.getElementById('estimatedDraws').addEventListener('input', () => renderRemainingPool());
+      // 即時更新彩池（兩個輸入框）
+      document.getElementById('estimatedDraws').addEventListener('input', renderRemainingPool);
+      document.getElementById('usageRate').addEventListener('input', renderRemainingPool);
 
       loadCrowdData();
       switchTab(0);
@@ -420,9 +425,17 @@
 
     function renderRemainingPool() {
       const estimatedDraws = parseInt(document.getElementById('estimatedDraws').value) || 500000;
-      const stats = calculatePoolStats(estimatedDraws);
+      const usageRate = parseFloat(document.getElementById('usageRate').value) || 82;
+      const stats = calculatePoolStats(estimatedDraws, usageRate);
+
       document.getElementById('remainingAmount').textContent = `$${stats.remaining.toLocaleString()}`;
-      document.getElementById('poolDetail').innerHTML = `樣本平均中獎 $${stats.avg} • 預估已發放 $${stats.disbursed.toLocaleString()}`;
+
+      document.getElementById('poolDetail').innerHTML = `
+        推算方式：<br>
+        • 樣本平均中獎金額 × 預估全澳總抽獎筆數 × 預估使用率<br>
+        • 目前樣本平均：$${stats.avg}　•　已發放估計：$${stats.disbursed.toLocaleString()}<br>
+        <span class="opacity-75">※ 注意：每周派出的電子優惠券若未使用會過期失效，因此實際剩餘彩池金額可能高於本估計值</span>
+      `;
     }
 
     function renderCrowdProbability() {
@@ -438,9 +451,20 @@
 
       document.getElementById('totalSamples').innerHTML = `全澳總樣本數：<span class="text-3xl font-bold text-emerald-600">${total}</span> 筆<br><span class="text-sm text-slate-500">整體中獎率 ${total?((wins/total)*100).toFixed(1):0}%</span>`;
       document.getElementById('statReliability').innerHTML = `<strong class="text-emerald-700">數據可信度</strong><br>${getReliabilityMessage(total)}`;
-      document.getElementById('upperLimits').innerHTML = `<div class="flex items-start gap-3"><span class="text-2xl">📌</span><div><strong class="text-blue-700">抽獎機會上限</strong><br>• 每支付系統每週最多 <strong class="text-blue-600">3次</strong><br>• 9個錢包最多 <strong class="text-blue-600">27次/週</strong></div></div>`;
+      document.getElementById('upperLimits').innerHTML = `
+        <div class="flex items-start gap-3">
+          <span class="text-2xl">📌</span>
+          <div>
+            <strong class="text-blue-700">抽獎機會上限（最新規則）</strong><br>
+            • 每支付系統每週最多 <strong class="text-blue-600">3次</strong><br>
+            • 8個錢包最多 <strong class="text-blue-600">24次/週</strong><br>
+            • 僅限週五至週日<br>
+            <span class="text-xs text-blue-600">目前樣本已收集 ${total} 次 • 數據品質高</span>
+          </div>
+        </div>
+      `;
 
-      // 面額概率表格
+      // 面額概率表格（保持）
       let html = `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="px-6 py-3 text-left">面額</th><th class="px-6 py-3 text-center">次數</th><th class="px-6 py-3 text-center">概率</th></tr></thead><tbody class="divide-y">`;
       [0,10,20,50,100,200].forEach(p => {
         const count = prizeCount[p];
@@ -459,9 +483,7 @@
         options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
       });
 
-      renderRemainingPool();
-
-      // 周數 × 支付系統 交叉表格（優化版）
+      // 交叉表格（保持優化版）
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
@@ -481,7 +503,6 @@
       paymentHTML += `</tbody></table>`;
       document.getElementById('crossPaymentTable').innerHTML = paymentHTML;
 
-      // 周數 × 中獎面額 交叉表格（優化版）
       let prizeHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       [0,10,20,50,100,200].forEach(p => prizeHTML += `<th class="text-xs">${p===0?'未中':p}元</th>`);
       prizeHTML += `</tr></thead><tbody>`;
@@ -500,6 +521,9 @@
       });
       prizeHTML += `</tbody></table>`;
       document.getElementById('crossPrizeTable').innerHTML = prizeHTML;
+
+      // 渲染彩池（包含過期考慮說明）
+      renderRemainingPool();
     }
 
     function switchTab(n) {
