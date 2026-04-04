@@ -326,23 +326,27 @@
                 upload_time: baseRecord.upload_time
             }));
 
-            fetch(GAS_WEB_APP_URL, {
-                method: 'POST',
-                mode: 'no-cors', 
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(() => {
-                showToast('上傳成功！感謝貢獻數據。');
-                resetForm();
-            })
-            .catch(error => {
-                console.error('Upload error:', error);
-                showToast('上傳失敗，請檢查網路連接。', true);
-            });
-        }
+           fetch(GAS_WEB_APP_URL, {
+    method: "POST",
+    body: JSON.stringify(dataToUpload),
+    headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+    }
+    // 不要加 mode: 'no-cors'
+})
+.then(response => response.json())
+.then(data => {
+    console.log("GAS 回應:", data); // 加這行來看實際回應
+    if (data.status === "success") {
+        showToast("上傳成功！感謝貢獻數據。", "success");
+    } else {
+        showToast("上傳失敗：" + data.message, "error");
+    }
+})
+.catch(error => {
+    console.error("上傳錯誤:", error);
+    showToast("上傳失敗", "error");
+});
 
         // --- 統計與圖表邏輯 ---
         function loadMyStats() {
