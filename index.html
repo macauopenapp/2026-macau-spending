@@ -23,6 +23,7 @@
     th { background: #f8fafc; font-weight: 600; white-space: nowrap; }
     .percent-cell { font-weight: 600; color: #10b981; }
     .highlight-card { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
+    .warning-banner { background: #fefce8; border: 2px solid #ca8a04; color: #854d0e; }
   </style>
 </head>
 <body class="bg-[#f8fafc] text-[#1e2937] min-h-screen pb-20">
@@ -87,11 +88,15 @@
         <h3 class="text-xl font-semibold mb-4">我的歷史記錄</h3>
         <div id="historyList" class="space-y-3"></div>
       </div>
-      <div id="weeklyWarning" class="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm hidden"></div>
     </div>
 
     <!-- Page 3: 全澳運勢 -->
     <div id="page2" class="p-6 hidden">
+      <!-- 大資料量警示（針對 10 萬筆規模） -->
+      <div id="dataLimitWarning" class="warning-banner rounded-3xl p-4 mb-6 text-sm flex items-center gap-3 hidden">
+        ⚠️ <strong>目前僅載入最近 10,000 筆全澳數據</strong>（活動預估總量約 10 萬筆）。統計結果為近似值，建議盡快升級使用 Cloud Functions 後端聚合以取得完整、即時的 100% 數據。
+      </div>
+
       <h2 class="text-2xl font-semibold mb-6">全澳運勢</h2>
 
       <!-- 三大核心指標 -->
@@ -129,7 +134,7 @@
         </div>
       </div>
 
-      <!-- 預估剩餘彩池（動態推算） -->
+      <!-- 預估剩餘彩池 -->
       <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-6 mb-8">
         <div class="flex justify-between items-start mb-4">
           <div>
@@ -188,7 +193,6 @@
     隱私權聲明：本App僅收集匿名抽獎數據用於全澳統計分析，絕不作其他用途。
   </footer>
 
-  <!-- ==================== 完整修正後的 Script ==================== -->
   <script>
     // ============== Firebase 配置 ==============
     const firebaseConfig = {
@@ -389,10 +393,11 @@
       renderMyStats();
     }
 
+    // ============== 針對 10 萬筆規模已提高 limit 至 10000 ==============
     async function loadCrowdData() {
       const snapshot = await db.collection('crowdRecords')
         .orderBy('timestamp', 'desc')
-        .limit(2000)
+        .limit(10000)
         .get();
       crowdData = snapshot.docs.map(doc => doc.data());
       renderCrowdProbability();
@@ -477,17 +482,11 @@
       try {
         if (record && record.linkId) {
           const batch = db.batch();
-          batch.update(db.collection('personalRecords').doc(editingRecordId), { 
-            date: newDate, payment: newPayment, prize: newPrize 
-          });
-          batch.update(db.collection('crowdRecords').doc(record.linkId), { 
-            date: newDate, payment: newPayment, prize: newPrize 
-          });
+          batch.update(db.collection('personalRecords').doc(editingRecordId), { date: newDate, payment: newPayment, prize: newPrize });
+          batch.update(db.collection('crowdRecords').doc(record.linkId), { date: newDate, payment: newPayment, prize: newPrize });
           await batch.commit();
         } else {
-          await db.collection('personalRecords').doc(editingRecordId).update({ 
-            date: newDate, payment: newPayment, prize: newPrize 
-          });
+          await db.collection('personalRecords').doc(editingRecordId).update({ date: newDate, payment: newPayment, prize: newPrize });
         }
         hideEditModal();
         await refreshAllData();
@@ -498,6 +497,14 @@
     }
 
     function renderCrowdProbability() {
+      // 顯示資料量警示
+      const warningEl = document.getElementById('dataLimitWarning');
+      if (crowdData.length >= 10000) {
+        warningEl.classList.remove('hidden');
+      } else {
+        warningEl.classList.add('hidden');
+      }
+
       const total = crowdData.length;
       const prizeCount = {0:0,10:0,20:0,50:0,100:0,200:0};
       let totalPrizeAmount = 0, wins = 0;
@@ -591,7 +598,7 @@
             • 每支付系統每週最多 <strong class="text-blue-600">3次</strong><br>
             • 8個錢包最多 <strong class="text-blue-600">24次/週</strong><br>
             • 僅限週五至週日<br>
-            <span class="text-xs text-blue-600">目前樣本已收集 ${total} 次 • 數據品質高</span>
+            <span class="text-xs text-blue-600">目前樣本已收集 ${total.toLocaleString()} 次（最近 10,000 筆） • 數據品質高</span>
           </div>
         </div>
       `;
@@ -657,6 +664,22 @@
       document.getElementById('page' + n).classList.remove('hidden');
       if (n === 1 && currentUser) renderHistoryList();
       if (n === 2) renderCrowdProbability();
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('historyList');
+      container.innerHTML = personalRecords.map(r => `
+        <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
+          <div>
+            <div class="font-medium">${r.date}</div>
+            <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="showEditModal('${r.id}')" class="px-5 py-2 text-emerald-600 border border-emerald-200 rounded-2xl text-sm">修改</button>
+            <button onclick="deleteRecord('${r.id}')" class="px-5 py-2 text-rose-600 border border-rose-200 rounded-2xl text-sm">刪除</button>
+          </div>
+        </div>
+      `).join('');
     }
 
     window.onload = init;
