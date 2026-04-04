@@ -609,12 +609,12 @@
         </div>
       `;
 
-      // ============== 修正重點：逐日精準篩選（完整資料合集） ==============
+      // ============== 修正重點：精準逐日匹配 + 全部資料計算 ==============
       let paymentHTML = `<table class="w-full"><thead><tr><th>周數</th>`;
       payments.forEach(p => paymentHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       paymentHTML += `</tr></thead><tbody>`;
       dates.forEach(d => {
-        const dayData = crowdData.filter(r => r.date === d);   // ← 改成逐日
+        const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);  // ← 精準比對日期部分
         const dayTotal = dayData.length;
         paymentHTML += `<tr><td class="font-medium text-left">${formatMyRecordDate(d)}</td>`;
         payments.forEach(pay => {
@@ -631,7 +631,7 @@
       [0,10,20,50,100,200].forEach(p => prizeHTML += `<th class="text-xs">${p===0?'未中':p}元</th>`);
       prizeHTML += `</tr></thead><tbody>`;
       dates.forEach(d => {
-        const dayData = crowdData.filter(r => r.date === d);
+        const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
         const dayTotal = dayData.length;
         prizeHTML += `<tr><td class="font-medium text-left">${formatMyRecordDate(d)}</td>`;
         [0,10,20,50,100,200].forEach(pr => {
@@ -648,7 +648,7 @@
       payments.forEach(p => amountHTML += `<th class="text-xs">${p.slice(0,6)}</th>`);
       amountHTML += `</tr></thead><tbody>`;
       dates.forEach(d => {
-        const dayData = crowdData.filter(r => r.date === d);
+        const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
         amountHTML += `<tr><td class="font-medium text-left">${formatMyRecordDate(d)}</td>`;
         payments.forEach(pay => {
           const totalAmount = dayData.filter(r => r.payment === pay).reduce((sum, r) => sum + (r.prize || 0), 0);
