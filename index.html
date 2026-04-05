@@ -223,35 +223,8 @@
     </div>
   </div>
 
-  <!-- Security Rules 檢視區塊（頂尖工程師檢視結果） -->
-  <div class="p-5">
-    <div class="rules-alert">
-      <strong>🔍 頂尖工程師檢視結果（已修正）</strong><br>
-      您的原始規則存在 2 個嚴重安全漏洞：<br>
-      1. crowdRecords 的 update/delete 完全開放給任何登入用戶（任何人可刪除/修改全澳數據）<br>
-      2. personalRecords 的 create 邏輯不夠嚴謹，read/write 未分開<br><br>
-      <strong>已修正並強化的最新規則（請直接複製替換）：</strong><br>
-      <pre class="text-[11px] mt-3 overflow-auto bg-white/30 p-3 rounded-xl">rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /personalRecords/{docId} {
-      allow read: if request.auth != null &amp;&amp; request.auth.uid == resource.data.uid;
-      allow create: if request.auth != null &amp;&amp; request.auth.uid == request.resource.data.uid;
-      allow update, delete: if request.auth != null &amp;&amp; request.auth.uid == resource.data.uid;
-    }
-    match /crowdRecords/{docId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null &amp;&amp; resource.data.uid == request.auth.uid;
-    }
-  }
-}</pre>
-      <div class="text-xs mt-3 opacity-75">※ 程式碼已同步修改（新增時同時寫入 uid），歷史記錄修改/刪除的 batch 操作現在 100% 安全且即時同步。</div>
-    </div>
-  </div>
-
   <!-- Footer -->
-  <footer class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t text-center text-xs text-slate-500 py-4">
+  <footer class="fixed bottom-10 left-0 right-0 max-w-2xl mx-auto bg-white border-t text-center text-xs text-slate-500 py-4">
     © 2026 社區消費大獎賞 All Rights Reserved.<br>
     隱私權聲明：本App僅收集匿名抽獎數據用於全澳統計分析，絕不作其他用途。
   </footer>
