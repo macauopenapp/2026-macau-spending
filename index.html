@@ -50,8 +50,8 @@
     .data-table tr:hover { background: #f8fafc; }
     .horizontal-bar { height: 220px; }
     .voucher-card { transition: all 0.2s; }
-    .voucher-card.used { background: #ecfdf5; border-color: #10b981; }
-    .min-spend { font-size: 28px; line-height: 1; font-weight: 700; letter-spacing: -0.04em; }
+    .min-spend { font-size: 32px; line-height: 1; font-weight: 700; letter-spacing: -0.04em; }
+    .week-label { font-size: 13px; background: #ecfdf5; color: #10b981; padding: 2px 10px; border-radius: 9999px; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
@@ -119,20 +119,22 @@
   <div id="page1" class="p-5 hidden">
     <h2 class="text-2xl font-bold mb-6">我的抽獎</h2>
     <div id="myStats" class="grid grid-cols-3 gap-4"></div>
-    <div id="remainingReminder" class="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-5">
-      <h3 class="font-semibold mb-3 flex items-center gap-2">🔄 本週剩餘機會</h3>
+
+    <!-- 本週剩餘機會（已強化） -->
+    <div id="remainingReminder" class="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6">
+      <h3 class="font-semibold mb-3 flex items-center gap-2">🔄 <span id="remainingWeekLabel"></span> 抽獎機會</h3>
       <div id="remainingGrid" class="grid grid-cols-2 gap-3"></div>
     </div>
 
-    <!-- 優化後的電子優惠券使用情況 -->
+    <!-- 本週可核銷電子優惠券（已大幅優化） -->
     <div id="voucherUsageSection" class="mt-8 bg-white rounded-3xl p-6 border border-emerald-100">
-      <h3 class="font-semibold mb-4 flex items-center gap-2 text-emerald-700">🎟️ 本週可核銷電子優惠券（周一～周四）</h3>
+      <h3 class="font-semibold mb-4 flex items-center gap-2 text-emerald-700">🎟️ <span id="voucherWeekLabel"></span> 可核銷電子優惠券（周一～周四）</h3>
       <div id="voucherUsageGrid" class="grid grid-cols-1 gap-5"></div>
       <div class="mt-6 text-xs text-slate-500 flex items-center gap-2">
-        <span class="inline-block w-3 h-3 bg-emerald-500 rounded"></span> 未使用可核銷 
+        <span class="inline-block w-3 h-3 bg-emerald-500 rounded"></span> 未使用 
         <span class="inline-block w-3 h-3 bg-rose-500 rounded"></span> 已使用
       </div>
-      <div class="mt-3 text-[10px] text-slate-400">※ 單筆消費達「最低消費金額」即可一次自動核銷所有券（面額總和 × 3）<br>逾期（每週五凌晨）失效</div>
+      <div class="mt-3 text-[10px] text-slate-400 leading-tight">※ 單筆消費達「最低消費金額」即可一次自動核銷所有券（面額總和×3）<br>逾期每週五凌晨清零</div>
     </div>
 
     <div class="mt-8">
@@ -521,88 +523,112 @@
       renderVoucherUsage();
     }
 
+    // ============== 強化後的「本週剩餘機會」（第4點要求） ==============
     function renderRemainingReminder() {
       const container = document.getElementById('remainingGrid');
-      container.innerHTML = '';
+      const weekLabel = document.getElementById('remainingWeekLabel');
       const currentWeek = getWeekNumber(dates[0]);
+      weekLabel.textContent = `第${currentWeek}週`;
+
+      container.innerHTML = '';
       payments.forEach(pay => {
-        const used = personalRecords.filter(r => getWeekNumber(r.date) === currentWeek && r.payment === pay).length;
-        const remaining = 3 - used;
-        const color = remaining > 0 ? 'emerald' : 'rose';
+        const weekRecords = personalRecords.filter(r => getWeekNumber(r.date) === currentWeek && r.payment === pay);
+        const used = weekRecords.length;
+        const remainingDraws = 3 - used;
+        const wonVouchers = weekRecords.filter(r => r.prize > 0).length;
+        const totalValue = weekRecords.reduce((sum, r) => sum + (r.prize || 0), 0);
+
+        const color = remainingDraws > 0 ? 'emerald' : 'rose';
         container.innerHTML += `
-          <div class="bg-white rounded-2xl p-4 text-center border border-${color}-200">
-            <div class="font-medium text-sm">${pay.slice(0,6)}</div>
-            <div class="text-2xl font-bold text-${color}-600">${used}/3</div>
-            <div class="text-xs text-slate-500">剩餘 ${remaining} 次</div>
+          <div class="bg-white rounded-2xl p-5 border border-${color}-200">
+            <div class="font-medium text-sm">${pay.slice(0,7)}</div>
+            <div class="flex justify-between items-baseline mt-3">
+              <div>
+                <div class="text-3xl font-bold text-${color}-600">${used}/3</div>
+                <div class="text-xs text-slate-500">抽獎機會</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xs text-emerald-600">已中 ${wonVouchers} 張券</div>
+                <div class="text-xs text-emerald-600">$${totalValue}</div>
+              </div>
+            </div>
+            <div class="text-xs text-slate-500 mt-2">剩餘 ${remainingDraws} 次</div>
           </div>`;
       });
     }
 
-    // ============== 優化後的電子優惠券使用情況（核心功能） ==============
+    // ============== 強化後的「本週可核銷電子優惠券」（第1-3點要求） ==============
     function renderVoucherUsage() {
       const container = document.getElementById('voucherUsageGrid');
-      container.innerHTML = '';
+      const weekLabel = document.getElementById('voucherWeekLabel');
       const currentWeek = getWeekNumber(dates[0]);
+      weekLabel.innerHTML = `第${currentWeek}週抽取`;
+
+      container.innerHTML = '';
 
       payments.forEach(pay => {
         const weekVouchers = personalRecords.filter(r => 
           getWeekNumber(r.date) === currentWeek && 
           r.payment === pay && 
-          r.prize > 0 && 
-          r.used !== true
+          r.prize > 0
         );
 
-        const usedVouchers = personalRecords.filter(r => 
-          getWeekNumber(r.date) === currentWeek && 
-          r.payment === pay && 
-          r.prize > 0 && 
-          r.used === true
-        );
+        const unused = weekVouchers.filter(r => r.used !== true);
+        const usedCount = weekVouchers.length - unused.length;
 
-        const denomCounts = {};
         let totalValue = 0;
-        weekVouchers.forEach(v => {
+        const denomCounts = {};
+        unused.forEach(v => {
           const p = v.prize;
           denomCounts[p] = (denomCounts[p] || 0) + 1;
           totalValue += p;
         });
 
-        const availableCount = weekVouchers.length;
-        const usedCount = usedVouchers.length;
+        const availableCount = unused.length;
         const minSpend = totalValue * 3;
 
-        let breakdownHTML = Object.keys(denomCounts)
-          .sort((a,b) => parseInt(b) - parseInt(a))
-          .map(p => `<div class="flex justify-between text-sm"><span>${p}元</span><span class="font-medium">×${denomCounts[p]}</span></div>`).join('');
+        let breakdownHTML = '';
+        if (availableCount > 0) {
+          breakdownHTML = Object.keys(denomCounts)
+            .sort((a,b) => parseInt(b)-parseInt(a))
+            .map(p => `
+              <div class="flex justify-between items-center py-1 border-b last:border-none">
+                <span class="font-medium">${p}元</span>
+                <span class="text-emerald-600">×${denomCounts[p]}　最低消費 <span class="font-bold">$${parseInt(p)*3}</span></span>
+              </div>
+            `).join('');
+        } else {
+          breakdownHTML = `<div class="text-slate-400 py-4 text-center">本週尚未抽到可核銷優惠券</div>`;
+        }
 
         const cardHTML = `
-          <div class="bg-white border border-emerald-200 rounded-3xl p-6">
-            <div class="flex justify-between items-start mb-4">
+          <div class="bg-white border border-emerald-200 rounded-3xl p-6 shadow-sm">
+            <div class="flex justify-between mb-4">
               <div>
-                <div class="font-semibold text-base">${pay}</div>
-                <div class="text-4xl font-bold text-emerald-600 mt-1">${availableCount}</div>
-                <div class="text-xs text-slate-500">張可用優惠券</div>
+                <div class="font-semibold">${pay}</div>
+                <div class="text-4xl font-bold text-emerald-600">${availableCount}</div>
+                <div class="text-xs text-slate-500">張可用</div>
               </div>
               <div class="text-right">
-                <div class="text-xs text-rose-500">已使用 ${usedCount} 張</div>
-                <div class="text-xs text-emerald-500 mt-1">總優惠價值 $${totalValue}</div>
+                <div class="week-label">第${currentWeek}週</div>
+                <div class="text-xs text-rose-500 mt-3">已使用 ${usedCount} 張</div>
               </div>
             </div>
 
             <div class="bg-slate-50 rounded-2xl p-4 mb-5">
               <div class="text-xs text-slate-500 mb-2">面額明細</div>
-              ${breakdownHTML || '<div class="text-slate-400 text-sm">本週尚未抽到優惠券</div>'}
+              ${breakdownHTML}
             </div>
 
             ${availableCount > 0 ? `
-            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-5 text-center">
-              <div class="text-xs text-emerald-700 mb-1 tracking-widest">最低單筆消費</div>
+            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 text-center mb-5">
+              <div class="text-xs tracking-widest text-emerald-700">一次核銷最低消費</div>
               <div class="min-spend text-emerald-700">$${minSpend}</div>
-              <div class="text-xs text-emerald-600 mt-1">即可一次自動核銷所有 ${availableCount} 張券</div>
+              <div class="text-xs text-emerald-600">（總面額 $${totalValue} × 3）</div>
             </div>` : ''}
 
-            <div class="flex gap-3 mt-4">
-              <button onclick="toggleAllUsed('${pay}', ${currentWeek})" class="flex-1 py-3 text-xs font-medium border border-rose-300 text-rose-600 rounded-2xl">標記全部已使用</button>
+            <div onclick="toggleAllUsed('${pay}', ${currentWeek})" class="text-center py-3 text-xs font-medium border border-rose-300 text-rose-600 rounded-2xl cursor-pointer active:bg-rose-50">
+              標記全部已使用
             </div>
           </div>
         `;
@@ -611,7 +637,7 @@
     }
 
     async function toggleAllUsed(payment, week) {
-      if (!confirm(`確定要把 ${payment} 本週所有未使用優惠券標記為「已使用」嗎？`)) return;
+      if (!confirm(`確定把 ${payment} 第${week}週所有未使用優惠券標記為「已使用」嗎？`)) return;
       const toUpdate = personalRecords.filter(r => 
         getWeekNumber(r.date) === week && 
         r.payment === payment && 
@@ -625,7 +651,7 @@
         });
         await batch.commit();
         await refreshAllData();
-        showToast('✅ 已標記全部為已使用');
+        showToast('✅ 已全部標記為已使用');
       } catch (e) {
         alert('更新失敗：' + e.message);
       }
