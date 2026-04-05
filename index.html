@@ -132,7 +132,7 @@
         <div id="previewContent" class="flex justify-between text-base font-medium"></div>
       </div>
     </div>
-    <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存並貢獻全澳抽獎趨勢</button>
+    <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存上載至全澳抽獎趨勢</button>
   </div>
 
   <!-- Page 1：我的抽獎紀錄 -->
@@ -205,7 +205,7 @@
       <div class="flex border-b mb-4 bg-white rounded-t-3xl">
         <button onclick="switchCrossTab(0)" id="crossTab0" class="tab-btn active flex-1 py-3 text-center text-sm">支付系統</button>
         <button onclick="switchCrossTab(1)" id="crossTab1" class="tab-btn flex-1 py-3 text-center text-sm">面額分布</button>
-        <button onclick="switchCrossTab(2)" id="crossTab2" class="tab-btn flex-1 py-3 text-center text-sm">金額貢獻</button>
+        <button onclick="switchCrossTab(2)" id="crossTab2" class="tab-btn flex-1 py-3 text-center text-sm">派發金額</button>
       </div>
       <div id="crossTabContent" class="bg-white rounded-b-3xl p-5"></div>
     </div>
@@ -451,7 +451,7 @@
         }
         selectedPrizes = [];
         document.getElementById('selectionCounter').textContent = `已選 0 / 3`;
-        showToast('✅ 已成功儲存並貢獻全澳抽獎趨勢！');
+        showToast('✅ 已成功上載至全澳抽獎趨勢！');
         triggerConfetti();
         await refreshAllData();
         switchTab(1);
@@ -459,7 +459,7 @@
         alert('儲存失敗：' + e.message); 
       } finally {
         btn.disabled = false; 
-        btn.textContent = '💾 儲存並貢獻全澳抽獎趨勢';
+        btn.textContent = '💾 儲存上載至全澳抽獎趨勢';
       }
     }
 
@@ -851,18 +851,18 @@
     }
 
     function generatePaymentInsights(stats) {
-      if (crowdData.length === 0) return ["📊 目前全澳數據不足，請等待更多用戶貢獻"];
+      if (crowdData.length === 0) return ["📊 目前數據不足，請等待更多用戶提供數據"];
       const top = stats[0];
       const second = stats[1];
       return [
         `🔥 <strong>${top.name}</strong> 是最受歡迎支付錢包（佔比 ${top.percent}%）`,
         `💰 第二名 ${second.name} 佔 ${second.percent}% 使用量`,
-        `📈 建議：優先使用 ${top.name} 跟隨全澳趨勢，可提高中獎率`
+        `📈 建議：優先使用 ${top.name} 跟隨全澳趨勢，或可提高中獎率`
       ];
     }
 
     function generatePrizeInsights(stats) {
-      if (crowdData.length === 0) return ["📊 目前全澳數據不足，請等待更多用戶貢獻"];
+      if (crowdData.length === 0) return ["📊 目前數據不足，請等待更多用戶提供數據"];
       const topPrize = stats[0];
       const noWin = stats.find(s => s.name === '未中獎');
       return [
@@ -872,7 +872,7 @@
     }
 
     function generateAmountInsights(stats) {
-      if (crowdData.length === 0) return ["📊 目前全澳數據不足，請等待更多用戶貢獻"];
+      if (crowdData.length === 0) return ["📊 目前數據不足，請等待更多用戶提供數據"];
       const top = stats[0];
       return [
         `💵 <strong>${top.name}</strong> 派發最多金額（佔總額 ${top.percent}%）`,
