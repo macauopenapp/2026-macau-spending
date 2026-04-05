@@ -26,7 +26,7 @@
     #remainingAmount { font-size: 42px; line-height: 1; font-weight: 700; letter-spacing: -0.04em; font-family: ui-monospace, monospace; }
     .tab-btn { transition: all 0.2s; }
     .tab-btn.active { border-bottom: 3px solid #10b981; color: #10b981; font-weight: 600; }
-    .remaining-card { background: linear-gradient(135deg, #f8fafc, #e0f2fe); }
+    .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
@@ -90,17 +90,14 @@
     <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存並貢獻全澳運勢</button>
   </div>
 
-  <!-- Page 1: 我的抽獎（新增核銷提示） -->
+  <!-- Page 1: 我的抽獎（已修復） -->
   <div id="page1" class="p-5 hidden">
     <h2 class="text-2xl font-bold mb-6">我的抽獎</h2>
     <div id="myStats" class="grid grid-cols-3 gap-4"></div>
-
-    <!-- 新增：核銷提示卡 -->
     <div id="remainingReminder" class="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-5">
       <h3 class="font-semibold mb-3 flex items-center gap-2">🔄 本週剩餘機會</h3>
       <div id="remainingGrid" class="grid grid-cols-2 gap-3"></div>
     </div>
-
     <div class="mt-8">
       <h3 class="font-semibold mb-3">面額分布</h3>
       <div class="chart-container"><canvas id="myChart"></canvas></div>
@@ -164,8 +161,6 @@
       <div id="poolDetail" class="text-xs opacity-90 leading-relaxed"></div>
     </div>
     <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-8 text-sm"></div>
-
-    <!-- 優化後的詳細交叉分析 -->
     <div class="mt-12">
       <h3 class="font-semibold mb-4 text-slate-600">詳細交叉分析（進階參考）</h3>
       <div class="flex border-b mb-4 bg-white rounded-t-3xl">
@@ -461,7 +456,7 @@
     }
 
     function renderPaymentChart() {
-      if (window.paymentChart) window.paymentChart.destroy();
+      if (window.paymentChart && typeof window.paymentChart.destroy === 'function') window.paymentChart.destroy();
       const paymentData = {};
       payments.forEach(p => paymentData[p] = {count: 0, amount: 0});
       personalRecords.forEach(r => {
@@ -484,7 +479,7 @@
     }
 
     function renderWeeklyChart() {
-      if (window.weeklyChart) window.weeklyChart.destroy();
+      if (window.weeklyChart && typeof window.weeklyChart.destroy === 'function') window.weeklyChart.destroy();
       const weeklyData = {};
       personalRecords.forEach(r => {
         const week = getWeekNumber(r.date);
@@ -510,12 +505,14 @@
     }
 
     function renderMyStats() {
-      if (window.myChart) window.myChart.destroy();
+      if (window.myChart && typeof window.myChart.destroy === 'function') window.myChart.destroy();
       const container = document.getElementById('myStats');
       if (personalRecords.length === 0) {
-        container.innerHTML = `<p class="col-span-3 text-center py-12 text-slate-400">還沒有記錄</p>`;
+        container.innerHTML = `<div class="col-span-3 empty-state"><div class="text-6xl mb-4">📭</div><p class="text-xl font-medium mb-2">還沒有抽獎記錄</p><p class="text-sm text-slate-500 mb-6">快去記錄第一筆吧！</p><button onclick="switchTab(0)" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-sm font-medium">立即新增記錄</button></div>`;
+        document.getElementById('remainingReminder').classList.add('hidden');
         return;
       }
+      document.getElementById('remainingReminder').classList.remove('hidden');
       const total = personalRecords.length;
       const totalPrize = personalRecords.reduce((sum, r) => sum + r.prize, 0);
       const winRate = ((personalRecords.filter(r => r.prize > 0).length / total) * 100).toFixed(1);
@@ -524,29 +521,37 @@
         <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-emerald-600">$${totalPrize}</div><div class="text-xs text-slate-500">總中獎金額</div></div>
         <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${winRate}%</div><div class="text-xs text-slate-500">整體中獎率</div></div>
       `;
-      window.myChart = new Chart(document.getElementById('myChart'), { type: 'bar', data: { labels: prizes, datasets: [{ label: '面額分佈', data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), backgroundColor: '#10b981' }] } });
+      window.myChart = new Chart(document.getElementById('myChart'), { 
+        type: 'bar', 
+        data: { 
+          labels: prizes, 
+          datasets: [{ 
+            label: '面額分佈', 
+            data: prizes.map(p => personalRecords.filter(r => r.prize === p).length), 
+            backgroundColor: '#10b981' 
+          }] 
+        } 
+      });
       renderPaymentChart();
       renderWeeklyChart();
       renderHistoryList();
-      renderRemainingReminder(); // 新增核銷提示
+      renderRemainingReminder();
     }
 
-    // 新增：核銷提示卡（點2）
     function renderRemainingReminder() {
       const container = document.getElementById('remainingGrid');
       container.innerHTML = '';
-      const currentWeek = getWeekNumber(dates[0]); // 取目前週數（可根據實際日期動態調整）
+      const currentWeek = getWeekNumber(dates[0]);
       payments.forEach(pay => {
         const used = personalRecords.filter(r => getWeekNumber(r.date) === currentWeek && r.payment === pay).length;
         const remaining = 3 - used;
         const color = remaining > 0 ? 'emerald' : 'rose';
-        const html = `
+        container.innerHTML += `
           <div class="bg-white rounded-2xl p-4 text-center border border-${color}-200">
             <div class="font-medium text-sm">${pay.slice(0,6)}</div>
-            <div class="text-2xl font-bold text-${color}-600">${used} / 3</div>
+            <div class="text-2xl font-bold text-${color}-600">${used}/3</div>
             <div class="text-xs text-slate-500">剩餘 ${remaining} 次</div>
           </div>`;
-        container.innerHTML += html;
       });
     }
 
@@ -610,7 +615,11 @@
 
     function renderCrowdProbability() {
       const warningEl = document.getElementById('dataLimitWarning');
-      if (crowdData.length >= 10000) warningEl.classList.remove('hidden'); else warningEl.classList.add('hidden');
+      if (crowdData.length >= 10000) {
+        warningEl.classList.remove('hidden');
+      } else {
+        warningEl.classList.add('hidden');
+      }
       const total = crowdData.length;
       const prizeCount = {0:0,10:0,20:0,50:0,100:0,200:0};
       let totalPrizeAmount = 0, wins = 0;
@@ -633,7 +642,7 @@
       });
       html += `</tbody></table></div>`;
       document.getElementById('probTable').innerHTML = html;
-      if (window.myProbChart) window.myProbChart.destroy();
+      if (window.myProbChart && typeof window.myProbChart.destroy === 'function') window.myProbChart.destroy();
       window.myProbChart = new Chart(document.getElementById('probChart'), {
         type: 'doughnut',
         data: { labels: ['未中獎','10元','20元','50元','100元','200元'], datasets: [{ data: Object.values(prizeCount), backgroundColor: ['#64748b','#22c55e','#eab308','#3b82f6','#a855f7','#ec4899'] }] },
@@ -659,7 +668,7 @@
         const rate = d.total ? ((d.wins / d.total) * 100).toFixed(1) : 0;
         winRateData.push(parseFloat(rate));
       });
-      if (window.myTrendChart) window.myTrendChart.destroy();
+      if (window.myTrendChart && typeof window.myTrendChart.destroy === 'function') window.myTrendChart.destroy();
       window.myTrendChart = new Chart(document.getElementById('trendChart'), {
         type: 'line',
         data: {
@@ -697,7 +706,7 @@
           </div>
         </div>
       `;
-      renderCrossAnalysis(0); // 預設顯示支付系統 Tab + 圖表
+      renderCrossAnalysis(0);
     }
 
     function switchCrossTab(n) {
@@ -709,29 +718,74 @@
       const container = document.getElementById('crossTabContent');
       Object.values(crossCharts).forEach(c => c && c.destroy());
       crossCharts = {};
-
       if (tab === 0) {
-        container.innerHTML = `
-          <h4 class="font-medium mb-3 text-emerald-700">各支付系統每周使用率（%）</h4>
-          <div class="chart-container"><canvas id="crossPaymentChart"></canvas></div>
-          <div class="overflow-x-auto mt-6">
-            <table class="w-full text-sm">...（簡化表格）...</table>
-          </div>`;
+        container.innerHTML = `<div class="mb-6"><h4 class="font-medium mb-3 text-emerald-700">各支付系統每周使用率（%）</h4><div class="chart-container"><canvas id="crossPaymentChart"></canvas></div></div>`;
         setTimeout(() => {
           const ctx = document.getElementById('crossPaymentChart');
-          if (ctx) crossCharts.payment = new Chart(ctx, { type: 'bar', data: { /* 動態生成 */ }, options: { responsive: true } });
+          if (ctx) {
+            crossCharts.payment = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: dates.map(d => formatMyRecordDate(d).substring(0,6)),
+                datasets: payments.map((pay, i) => ({
+                  label: pay.slice(0,6),
+                  data: dates.map(d => {
+                    const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
+                    const dayTotal = dayData.length;
+                    const count = dayData.filter(r => r.payment === pay).length;
+                    return dayTotal ? Math.round((count / dayTotal) * 100) : 0;
+                  }),
+                  backgroundColor: `hsl(${i*40}, 80%, 60%)`
+                }))
+              },
+              options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+          }
         }, 50);
       } else if (tab === 1) {
-        container.innerHTML = `<h4 class="font-medium mb-3 text-emerald-700">各面額每周中獎比例</h4><div class="chart-container"><canvas id="crossPrizeChart"></canvas></div>`;
+        container.innerHTML = `<div class="mb-6"><h4 class="font-medium mb-3 text-emerald-700">各面額每周中獎比例</h4><div class="chart-container"><canvas id="crossPrizeChart"></canvas></div></div>`;
         setTimeout(() => {
           const ctx = document.getElementById('crossPrizeChart');
-          if (ctx) crossCharts.prize = new Chart(ctx, { type: 'bar', data: { /* 動態生成 */ }, options: { responsive: true } });
+          if (ctx) {
+            crossCharts.prize = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: dates.map(d => formatMyRecordDate(d).substring(0,6)),
+                datasets: [0,10,20,50,100,200].map(p => ({
+                  label: p === 0 ? '未中' : p + '元',
+                  data: dates.map(d => {
+                    const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
+                    const dayTotal = dayData.length;
+                    return dayTotal ? Math.round((dayData.filter(r => r.prize === p).length / dayTotal) * 100) : 0;
+                  }),
+                  backgroundColor: p === 0 ? '#64748b' : `hsl(${p*2}, 80%, 60%)`
+                }))
+              },
+              options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+          }
         }, 50);
       } else {
-        container.innerHTML = `<h4 class="font-medium mb-3 text-emerald-700">各支付系統每周貢獻金額</h4><div class="chart-container"><canvas id="crossAmountChart"></canvas></div>`;
+        container.innerHTML = `<div class="mb-6"><h4 class="font-medium mb-3 text-emerald-700">各支付系統每周貢獻金額</h4><div class="chart-container"><canvas id="crossAmountChart"></canvas></div></div>`;
         setTimeout(() => {
           const ctx = document.getElementById('crossAmountChart');
-          if (ctx) crossCharts.amount = new Chart(ctx, { type: 'bar', data: { /* 動態生成 */ }, options: { responsive: true } });
+          if (ctx) {
+            crossCharts.amount = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: dates.map(d => formatMyRecordDate(d).substring(0,6)),
+                datasets: payments.map((pay, i) => ({
+                  label: pay.slice(0,6),
+                  data: dates.map(d => {
+                    const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
+                    return dayData.filter(r => r.payment === pay).reduce((sum, r) => sum + (r.prize || 0), 0);
+                  }),
+                  backgroundColor: `hsl(${i*40}, 80%, 60%)`
+                }))
+              },
+              options: { responsive: true }
+            });
+          }
         }, 50);
       }
     }
