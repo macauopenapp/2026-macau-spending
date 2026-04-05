@@ -27,6 +27,34 @@
     .tab-btn { transition: all 0.2s; }
     .tab-btn.active { border-bottom: 3px solid #10b981; color: #10b981; font-weight: 600; }
     .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
+    .insight-card {
+      background: linear-gradient(135deg, #10b981, #14b8a6);
+      color: white;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 15px -3px rgb(16 185 129 / 0.3);
+    }
+    .insight-card h4 {
+      font-size: 1.15rem;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+    .insight-list li {
+      margin-bottom: 10px;
+      padding-left: 28px;
+      position: relative;
+    }
+    .insight-list li:before {
+      content: "💡";
+      position: absolute;
+      left: 0;
+      font-size: 1.1rem;
+    }
+    .rank-1 { background: linear-gradient(90deg, #f59e0b, #fbbf24); color: white; font-weight: 700; }
+    .data-table th, .data-table td { padding: 14px 12px; text-align: center; }
+    .data-table tr:hover { background: #f8fafc; }
+    .horizontal-bar { height: 220px; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
@@ -90,7 +118,7 @@
     <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存並貢獻全澳運勢</button>
   </div>
 
-  <!-- Page 1: 我的抽獎（已修復） -->
+  <!-- Page 1: 我的抽獎 -->
   <div id="page1" class="p-5 hidden">
     <h2 class="text-2xl font-bold mb-6">我的抽獎</h2>
     <div id="myStats" class="grid grid-cols-3 gap-4"></div>
@@ -613,6 +641,205 @@
       }
     }
 
+    // ============== 新增：交叉分析數據計算與洞察 ==============
+    function getPaymentStats() {
+      const stats = {};
+      payments.forEach(p => {
+        stats[p] = { count: 0, amount: 0, wins: 0 };
+      });
+      crowdData.forEach(r => {
+        const p = r.payment;
+        if (stats[p]) {
+          stats[p].count++;
+          stats[p].amount += (r.prize || 0);
+          if ((r.prize || 0) > 0) stats[p].wins++;
+        }
+      });
+      const total = crowdData.length || 1;
+      return payments.map(p => ({
+        name: p,
+        count: stats[p].count,
+        percent: ((stats[p].count / total) * 100).toFixed(1),
+        amount: stats[p].amount,
+        winRate: stats[p].count ? ((stats[p].wins / stats[p].count) * 100).toFixed(1) : '0.0',
+        avg: stats[p].count ? (stats[p].amount / stats[p].count).toFixed(1) : '0.0'
+      })).sort((a, b) => b.count - a.count);
+    }
+
+    function getPrizeStats() {
+      const stats = {};
+      prizes.forEach(p => stats[p] = { count: 0 });
+      crowdData.forEach(r => {
+        const p = r.prize || 0;
+        if (stats[p] !== undefined) stats[p].count++;
+      });
+      const total = crowdData.length || 1;
+      return prizes.map(p => ({
+        name: p === 0 ? '未中獎' : p + '元',
+        count: stats[p].count,
+        percent: ((stats[p].count / total) * 100).toFixed(2),
+        avgWeekly: (crowdData.length > 0 ? (stats[p].count / 10).toFixed(1) : '0.0')
+      })).sort((a, b) => b.count - a.count);
+    }
+
+    function getAmountContributionStats() {
+      const stats = {};
+      payments.forEach(p => stats[p] = { amount: 0, count: 0 });
+      crowdData.forEach(r => {
+        const p = r.payment;
+        if (stats[p]) {
+          stats[p].amount += (r.prize || 0);
+          stats[p].count++;
+        }
+      });
+      const totalAmount = crowdData.reduce((sum, r) => sum + (r.prize || 0), 0) || 1;
+      return payments.map(p => ({
+        name: p,
+        amount: stats[p].amount,
+        percent: ((stats[p].amount / totalAmount) * 100).toFixed(1),
+        avgPerDraw: stats[p].count ? (stats[p].amount / stats[p].count).toFixed(1) : '0.0'
+      })).sort((a, b) => b.amount - a.amount);
+    }
+
+    function generatePaymentInsights(stats) {
+      if (crowdData.length === 0) return ["📊 目前全澳數據不足，請等待更多用戶貢獻"];
+      const top = stats[0];
+      const second = stats[1];
+      return [
+        `🔥 <strong>${top.name}</strong> 是最受歡迎支付系統（佔比 ${top.percent}%）`,
+        `💰 第二名 ${second.name} 貢獻 ${second.percent}% 使用量`,
+        `📈 建議：優先使用 ${top.name} 跟隨全澳趨勢，可提高中獎曝光率`
+      ];
+    }
+
+    function generatePrizeInsights(stats) {
+      if (crowdData.length === 0) return ["📊 目前全澳數據不足，請等待更多用戶貢獻"];
+      const topPrize = stats[0];
+      const noWin = stats.find(s => s.name === '未中獎');
+      return [
+        `🎯 最常中獎面額是 <strong>${topPrize.name}</strong>（佔比 ${topPrize.percent}%）`,
+        `📉 未中獎率 ${noWin ? noWin.percent : '0'}% — 小額面額更穩健`,
+        `📌 建議：均衡選擇 10-50 元面額，可平衡風險與回報`
+      ];
+    }
+
+    function generateAmountInsights(stats) {
+      if (crowdData.length === 0) return ["📊 目前全澳數據不足，請等待更多用戶貢獻"];
+      const top = stats[0];
+      return [
+        `💵 <strong>${top.name}</strong> 貢獻最高金額（佔總額 ${top.percent}%）`,
+        `📊 平均每筆貢獻 ${top.avgPerDraw} 元 — 性價比最高`,
+        `🚀 建議：多用 ${top.name} 可加速全澳彩池消耗，增加個人中獎機會`
+      ];
+    }
+
+    function renderCrossAnalysis(tab) {
+      const container = document.getElementById('crossTabContent');
+      Object.values(crossCharts).forEach(c => c && c.destroy());
+      crossCharts = {};
+      container.innerHTML = '';
+
+      let stats = [];
+      let insights = [];
+      let title = '';
+      let chartLabel = '';
+      let chartDataKey = '';
+
+      if (tab === 0) {
+        title = '支付系統統計';
+        stats = getPaymentStats();
+        insights = generatePaymentInsights(stats);
+        chartLabel = '使用次數';
+        chartDataKey = 'count';
+      } else if (tab === 1) {
+        title = '面額分布統計';
+        stats = getPrizeStats();
+        insights = generatePrizeInsights(stats);
+        chartLabel = '出現次數';
+        chartDataKey = 'count';
+      } else {
+        title = '金額貢獻統計';
+        stats = getAmountContributionStats();
+        insights = generateAmountInsights(stats);
+        chartLabel = '貢獻金額 (元)';
+        chartDataKey = 'amount';
+      }
+
+      // 洞察卡片
+      let insightHTML = `
+        <div class="insight-card">
+          <h4>🔍 關鍵洞察 — ${title}</h4>
+          <ul class="insight-list text-sm">
+            ${insights.map(i => `<li>${i}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+
+      // 表格
+      let tableHTML = `<div class="overflow-x-auto mb-6"><table class="data-table w-full text-sm border-collapse bg-white rounded-2xl overflow-hidden">`;
+      if (tab === 0) {
+        tableHTML += `<thead class="bg-slate-100"><tr><th>支付系統</th><th>使用次數</th><th>佔比</th><th>總金額</th><th>中獎率</th><th>平均每筆</th></tr></thead><tbody>`;
+        stats.forEach((s, i) => {
+          const rankClass = i === 0 ? 'rank-1' : '';
+          tableHTML += `<tr class="${rankClass}"><td class="font-medium text-left">${s.name}</td><td>${s.count}</td><td class="percent-cell">${s.percent}%</td><td>$${s.amount}</td><td>${s.winRate}%</td><td>$${s.avg}</td></tr>`;
+        });
+      } else if (tab === 1) {
+        tableHTML += `<thead class="bg-slate-100"><tr><th>面額</th><th>出現次數</th><th>概率</th><th>周平均</th></tr></thead><tbody>`;
+        stats.forEach((s, i) => {
+          const rankClass = i === 0 ? 'rank-1' : '';
+          tableHTML += `<tr class="${rankClass}"><td class="font-medium text-left">${s.name}</td><td>${s.count}</td><td class="percent-cell">${s.percent}%</td><td>${s.avgWeekly}</td></tr>`;
+        });
+      } else {
+        tableHTML += `<thead class="bg-slate-100"><tr><th>支付系統</th><th>貢獻金額</th><th>佔總額</th><th>平均每筆</th></tr></thead><tbody>`;
+        stats.forEach((s, i) => {
+          const rankClass = i === 0 ? 'rank-1' : '';
+          tableHTML += `<tr class="${rankClass}"><td class="font-medium text-left">${s.name}</td><td>$${s.amount.toLocaleString()}</td><td class="percent-cell">${s.percent}%</td><td>$${s.avgPerDraw}</td></tr>`;
+        });
+      }
+      tableHTML += `</tbody></table></div>`;
+
+      // 水平長條圖
+      let chartHTML = `
+        <div class="chart-container horizontal-bar">
+          <canvas id="crossInsightChart"></canvas>
+        </div>
+      `;
+
+      container.innerHTML = insightHTML + tableHTML + chartHTML;
+
+      // 渲染水平長條圖
+      setTimeout(() => {
+        const ctx = document.getElementById('crossInsightChart');
+        if (!ctx) return;
+        const labels = stats.map(s => s.name.length > 12 ? s.name.substring(0, 12) + '..' : s.name);
+        const dataValues = stats.map(s => s[chartDataKey]);
+        const colors = ['#10b981', '#14b8a6', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5', '#ecfdf5', '#f0fdf4'];
+        crossCharts[tab] = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: chartLabel,
+              data: dataValues,
+              backgroundColor: colors,
+              borderColor: '#ffffff',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+              y: { grid: { display: false } }
+            }
+          }
+        });
+      }, 50);
+    }
+
     function renderCrowdProbability() {
       const warningEl = document.getElementById('dataLimitWarning');
       if (crowdData.length >= 10000) {
@@ -712,82 +939,6 @@
     function switchCrossTab(n) {
       document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===n));
       renderCrossAnalysis(n);
-    }
-
-    function renderCrossAnalysis(tab) {
-      const container = document.getElementById('crossTabContent');
-      Object.values(crossCharts).forEach(c => c && c.destroy());
-      crossCharts = {};
-      if (tab === 0) {
-        container.innerHTML = `<div class="mb-6"><h4 class="font-medium mb-3 text-emerald-700">各支付系統每周使用率（%）</h4><div class="chart-container"><canvas id="crossPaymentChart"></canvas></div></div>`;
-        setTimeout(() => {
-          const ctx = document.getElementById('crossPaymentChart');
-          if (ctx) {
-            crossCharts.payment = new Chart(ctx, {
-              type: 'bar',
-              data: {
-                labels: dates.map(d => formatMyRecordDate(d).substring(0,6)),
-                datasets: payments.map((pay, i) => ({
-                  label: pay.slice(0,6),
-                  data: dates.map(d => {
-                    const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
-                    const dayTotal = dayData.length;
-                    const count = dayData.filter(r => r.payment === pay).length;
-                    return dayTotal ? Math.round((count / dayTotal) * 100) : 0;
-                  }),
-                  backgroundColor: `hsl(${i*40}, 80%, 60%)`
-                }))
-              },
-              options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
-            });
-          }
-        }, 50);
-      } else if (tab === 1) {
-        container.innerHTML = `<div class="mb-6"><h4 class="font-medium mb-3 text-emerald-700">各面額每周中獎比例</h4><div class="chart-container"><canvas id="crossPrizeChart"></canvas></div></div>`;
-        setTimeout(() => {
-          const ctx = document.getElementById('crossPrizeChart');
-          if (ctx) {
-            crossCharts.prize = new Chart(ctx, {
-              type: 'bar',
-              data: {
-                labels: dates.map(d => formatMyRecordDate(d).substring(0,6)),
-                datasets: [0,10,20,50,100,200].map(p => ({
-                  label: p === 0 ? '未中' : p + '元',
-                  data: dates.map(d => {
-                    const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
-                    const dayTotal = dayData.length;
-                    return dayTotal ? Math.round((dayData.filter(r => r.prize === p).length / dayTotal) * 100) : 0;
-                  }),
-                  backgroundColor: p === 0 ? '#64748b' : `hsl(${p*2}, 80%, 60%)`
-                }))
-              },
-              options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
-            });
-          }
-        }, 50);
-      } else {
-        container.innerHTML = `<div class="mb-6"><h4 class="font-medium mb-3 text-emerald-700">各支付系統每周貢獻金額</h4><div class="chart-container"><canvas id="crossAmountChart"></canvas></div></div>`;
-        setTimeout(() => {
-          const ctx = document.getElementById('crossAmountChart');
-          if (ctx) {
-            crossCharts.amount = new Chart(ctx, {
-              type: 'bar',
-              data: {
-                labels: dates.map(d => formatMyRecordDate(d).substring(0,6)),
-                datasets: payments.map((pay, i) => ({
-                  label: pay.slice(0,6),
-                  data: dates.map(d => {
-                    const dayData = crowdData.filter(r => r.date.split(' ')[0] === d.split(' ')[0]);
-                    return dayData.filter(r => r.payment === pay).reduce((sum, r) => sum + (r.prize || 0), 0);
-                  }),
-                  backgroundColor: `hsl(${i*40}, 80%, 60%)`
-                }))
-              },
-              options: { responsive: true }
-            });
-          }
-        }, 50);
-      }
     }
 
     function renderHistoryList() {
