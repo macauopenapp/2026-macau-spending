@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2026 社區消費大獎賞 📊全澳與個人抽獎運勢追蹤系統</title>
+  <title>2026 社區消費大獎賞 📊個人抽獎紀錄 & 全澳熱門趨勢</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -66,7 +66,7 @@
   <div class="bg-white border-b sticky top-0 z-50 px-5 py-4 flex justify-between items-center shadow-sm">
     <div>
       <h1 class="text-3xl font-bold text-emerald-700">2026 社區消費大獎賞</h1>
-      <p class="text-lg font-semibold text-slate-700">📊 全澳與個人抽獎運勢追蹤系統</p>
+      <p class="text-lg font-semibold text-slate-700">📊 個人抽獎紀錄 & 全澳熱門趨勢</p>
     </div>
     <div onclick="googleLogin()" id="loginBtn" class="cursor-pointer flex items-center gap-3 bg-white border border-slate-200 px-5 py-2 rounded-3xl shadow-sm">
       <div class="w-8 h-8 bg-emerald-100 rounded-2xl flex items-center justify-center text-xl">👤</div>
@@ -82,8 +82,8 @@
   <!-- Bottom Navigation -->
   <div class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t z-50 flex">
     <button onclick="switchTab(0)" id="tab0" class="flex-1 py-4 text-emerald-600 font-semibold border-b-4 border-emerald-600 flex flex-col items-center gap-1 text-sm">📝 快速記錄</button>
-    <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4 flex flex-col items-center gap-1 text-sm text-slate-500">📊 我的抽獎</button>
-    <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4 flex flex-col items-center gap-1 text-sm text-slate-500">🌍 全澳運勢</button>
+    <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4 flex flex-col items-center gap-1 text-sm text-slate-500">📊 我的抽獎紀錄</button>
+    <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4 flex flex-col items-center gap-1 text-sm text-slate-500">🌍 全澳熱門趨勢</button>
   </div>
 
   <!-- Floating Action Button -->
@@ -97,7 +97,7 @@
   <!-- Page 0: 快速記錄 -->
   <div id="page0" class="p-5">
     <div class="card p-6">
-      <h2 class="text-2xl font-bold mb-8 text-center">新增抽獎記錄</h2>
+      <h2 class="text-2xl font-bold mb-8 text-center">快速新增抽獎紀錄</h2>
       <div class="mb-8">
         <label class="block text-sm font-medium mb-3 text-slate-600">抽獎日期</label>
         <div id="dateChips" class="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory"></div>
@@ -118,12 +118,12 @@
         <div id="previewContent" class="flex justify-between text-base font-medium"></div>
       </div>
     </div>
-    <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存並貢獻全澳運勢</button>
+    <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存並貢獻全澳熱門趨勢</button>
   </div>
 
-  <!-- Page 1: 我的抽獎 -->
+  <!-- Page 1: 我的抽獎紀錄 -->
   <div id="page1" class="p-5 hidden">
-    <h2 class="text-2xl font-bold mb-6">我的抽獎</h2>
+    <h2 class="text-2xl font-bold mb-6">我的抽獎紀錄</h2>
     <div id="myStats" class="grid grid-cols-3 gap-4"></div>
 
     <!-- 本週剩餘機會 -->
@@ -132,7 +132,7 @@
       <div id="remainingGrid" class="grid grid-cols-2 gap-3"></div>
     </div>
 
-    <!-- 電子優惠券使用情況（單張獨立標記） -->
+    <!-- 電子優惠券使用情況 -->
     <div id="voucherUsageSection" class="mt-8 bg-white rounded-3xl p-6 border border-emerald-100">
       <h3 class="font-semibold mb-4 flex items-center gap-2 text-emerald-700">🎟️ <span id="voucherWeekLabel"></span> 可核銷電子優惠券（周一至周四）</h3>
       <div id="voucherUsageGrid" class="grid grid-cols-1 gap-5"></div>
@@ -152,21 +152,21 @@
       <div class="chart-container"><canvas id="paymentChart"></canvas></div>
     </div>
     <div class="mt-12">
-      <h3 class="font-semibold mb-3">各周中獎趨勢</h3>
+      <h3 class="font-semibold mb-3">各週中獎趨勢</h3>
       <div class="chart-container"><canvas id="weeklyChart"></canvas></div>
     </div>
     <div class="mt-12">
-      <h3 class="text-xl font-semibold mb-4">我的歷史記錄</h3>
+      <h3 class="text-xl font-semibold mb-4">我的歷史抽獎紀錄</h3>
       <div id="historyList" class="space-y-3"></div>
     </div>
   </div>
 
-  <!-- Page 2: 全澳運勢 -->
+  <!-- Page 2: 全澳熱門趨勢 -->
   <div id="page2" class="p-5 hidden">
     <div id="dataLimitWarning" class="warning-banner rounded-3xl p-4 mb-6 text-sm flex items-center gap-3 hidden">
       ⚠️ <strong>目前僅載入最近 10,000 筆全澳數據</strong>（活動預估總量約 10 萬筆）。統計結果為近似值。
     </div>
-    <h2 class="text-2xl font-bold mb-6">全澳運勢</h2>
+    <h2 class="text-2xl font-bold mb-6">全澳熱門趨勢</h2>
     <div id="coreStatsCard" class="highlight-card rounded-3xl p-8 mb-8 text-center text-white">
       <div class="grid grid-cols-3 gap-6">
         <div><div class="text-xs opacity-90 mb-1">全澳總樣本</div><div id="totalSamplesBig" class="text-4xl font-bold"></div></div>
@@ -182,7 +182,7 @@
       </div>
     </div>
     <div class="mb-10">
-      <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><span>📈</span> 全澳中獎率趨勢（周別）</h3>
+      <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><span>📈</span> 全澳中獎率趨勢（週別）</h3>
       <div class="bg-white rounded-3xl p-6"><canvas id="trendChart" height="220"></canvas></div>
     </div>
     <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-8 text-sm"></div>
@@ -200,7 +200,7 @@
   <!-- Edit Modal -->
   <div id="editModal" class="modal">
     <div class="modal-content bg-white max-w-md w-full rounded-3xl p-6">
-      <h3 class="text-xl font-semibold mb-6">編輯抽獎記錄</h3>
+      <h3 class="text-xl font-semibold mb-6">編輯抽獎紀錄</h3>
       <select id="editDate" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg mb-4"></select>
       <select id="editPayment" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg mb-4"></select>
       <select id="editPrize" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg mb-4"></select>
@@ -427,7 +427,7 @@
         }
         selectedPrizes = [];
         document.getElementById('selectionCounter').textContent = `已選 0 / 3`;
-        showToast('✅ 已成功儲存並貢獻全澳運勢！');
+        showToast('✅ 已成功儲存並貢獻全澳熱門趨勢！');
         triggerConfetti();
         await refreshAllData();
         switchTab(1);
@@ -435,7 +435,7 @@
         alert('儲存失敗：' + e.message); 
       } finally {
         btn.disabled = false; 
-        btn.textContent = '💾 儲存並貢獻全澳運勢';
+        btn.textContent = '💾 儲存並貢獻全澳熱門趨勢';
       }
     }
 
@@ -505,7 +505,7 @@
       if (window.myChart && typeof window.myChart.destroy === 'function') window.myChart.destroy();
       const container = document.getElementById('myStats');
       if (personalRecords.length === 0) {
-        container.innerHTML = `<div class="col-span-3 empty-state"><div class="text-6xl mb-4">📭</div><p class="text-xl font-medium mb-2">還沒有抽獎記錄</p><p class="text-sm text-slate-500 mb-6">快去記錄第一筆吧！</p><button onclick="switchTab(0)" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-sm font-medium">立即新增記錄</button></div>`;
+        container.innerHTML = `<div class="col-span-3 empty-state"><div class="text-6xl mb-4">📭</div><p class="text-xl font-medium mb-2">還沒有抽獎紀錄</p><p class="text-sm text-slate-500 mb-6">快去記錄第一筆吧！</p><button onclick="switchTab(0)" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-sm font-medium">立即新增紀錄</button></div>`;
         document.getElementById('remainingReminder').classList.add('hidden');
         return;
       }
@@ -671,7 +671,7 @@
     }
 
     async function deleteRecord(id) {
-      if (!confirm('確定要刪除這筆抽獎記錄嗎？\n\n此操作會同時從「全澳運勢」中移除對應數據，無法復原。')) return;
+      if (!confirm('確定要刪除這筆抽獎紀錄嗎？\n\n此操作會同時從「全澳熱門趨勢」中移除對應數據，無法復原。')) return;
       const record = personalRecords.find(r => r.id === id);
       try {
         if (record && record.linkId) {
@@ -683,7 +683,7 @@
           await db.collection('personalRecords').doc(id).delete();
         }
         await refreshAllData();
-        showToast('✅ 已刪除記錄並同步全澳運勢');
+        showToast('✅ 已刪除紀錄並同步全澳熱門趨勢');
       } catch (e) { 
         alert('刪除失敗：' + e.message); 
       }
@@ -761,7 +761,7 @@
         }
         hideEditModal();
         await refreshAllData();
-        showToast('✅ 已成功更新記錄並同步全澳運勢！');
+        showToast('✅ 已成功更新紀錄並同步全澳熱門趨勢！');
       } catch (e) { 
         alert('更新失敗：' + e.message); 
       }
@@ -907,7 +907,7 @@
           tableHTML += `<tr class="${rankClass}"><td class="font-medium text-left">${s.name}</td><td>${s.count}</td><td class="percent-cell">${s.percent}%</td><td>$${s.amount}</td><td>${s.winRate}%</td><td>$${s.avg}</td></tr>`;
         });
       } else if (tab === 1) {
-        tableHTML += `<thead class="bg-slate-100"><tr><th>面額</th><th>出現次數</th><th>概率</th><th>周平均</th></tr></thead><tbody>`;
+        tableHTML += `<thead class="bg-slate-100"><tr><th>面額</th><th>出現次數</th><th>概率</th><th>週平均</th></tr></thead><tbody>`;
         stats.forEach((s, i) => {
           const rankClass = i === 0 ? 'rank-1' : '';
           tableHTML += `<tr class="${rankClass}"><td class="font-medium text-left">${s.name}</td><td>${s.count}</td><td class="percent-cell">${s.percent}%</td><td>${s.avgWeekly}</td></tr>`;
@@ -1037,7 +1037,7 @@
           plugins: { legend: { display: false } },
           scales: {
             y: { beginAtZero: true, max: 100, title: { display: true, text: '中獎率 (%)' } },
-            x: { title: { display: true, text: '周別' } }
+            x: { title: { display: true, text: '週別' } }
           }
         }
       });
