@@ -23,7 +23,6 @@
     th, td { font-size: 14px; padding: 12px 8px; }
     .percent-cell { font-weight: 700; color: #10b981; }
     .chart-container { position: relative; height: 260px; margin: 20px 0; }
-    #remainingAmount { font-size: 42px; line-height: 1; font-weight: 700; letter-spacing: -0.04em; font-family: ui-monospace, monospace; }
     .tab-btn { transition: all 0.2s; }
     .tab-btn.active { border-bottom: 3px solid #10b981; color: #10b981; font-weight: 600; }
     .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
@@ -34,11 +33,6 @@
       padding: 20px;
       margin-bottom: 24px;
       box-shadow: 0 10px 15px -3px rgb(16 185 129 / 0.3);
-    }
-    .insight-card h4 {
-      font-size: 1.15rem;
-      margin-bottom: 12px;
-      font-weight: 700;
     }
     .insight-list li {
       margin-bottom: 10px;
@@ -55,6 +49,8 @@
     .data-table th, .data-table td { padding: 14px 12px; text-align: center; }
     .data-table tr:hover { background: #f8fafc; }
     .horizontal-bar { height: 220px; }
+    .voucher-card { transition: all 0.2s; }
+    .voucher-card.used { background: #ecfdf5; border-color: #10b981; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
@@ -126,6 +122,19 @@
       <h3 class="font-semibold mb-3 flex items-center gap-2">🔄 本週剩餘機會</h3>
       <div id="remainingGrid" class="grid grid-cols-2 gap-3"></div>
     </div>
+
+    <!-- 新增：電子優惠券使用情況 -->
+    <div id="voucherUsageSection" class="mt-8 bg-white rounded-3xl p-6 border border-emerald-100">
+      <h3 class="font-semibold mb-4 flex items-center gap-2 text-emerald-700">🎟️ 電子優惠券使用情況</h3>
+      <div id="voucherUsageGrid" class="grid grid-cols-1 gap-4"></div>
+      <div class="mt-6 text-xs text-slate-500 flex items-center gap-2">
+        <span class="inline-block w-3 h-3 bg-emerald-500 rounded"></span>
+        綠色 = 未使用（可核銷） 
+        <span class="inline-block w-3 h-3 bg-rose-500 rounded"></span>
+        紅色 = 已使用
+      </div>
+    </div>
+
     <div class="mt-8">
       <h3 class="font-semibold mb-3">面額分布</h3>
       <div class="chart-container"><canvas id="myChart"></canvas></div>
@@ -168,26 +177,6 @@
       <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><span>📈</span> 全澳中獎率趨勢（周別）</h3>
       <div class="bg-white rounded-3xl p-6"><canvas id="trendChart" height="220"></canvas></div>
     </div>
-    <div id="remainingPoolCard" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-7 mb-8">
-      <div class="text-center">
-        <div class="text-sm opacity-90 mb-1 tracking-widest">預估剩餘彩池金額</div>
-        <div id="remainingAmount" class="text-[42px] font-bold tracking-tighter text-center mb-6"></div>
-      </div>
-      <div class="text-right space-y-3 mb-6">
-        <div>
-          <input id="estimatedDraws" type="number" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
-          <div class="text-[10px] opacity-75">預估全澳總抽獎筆數</div>
-        </div>
-        <div>
-          <input id="usageRate" type="number" value="88" min="1" max="100" class="w-40 text-center bg-white/20 text-white border border-white/30 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-white">
-          <div class="text-[10px] opacity-75">% 使用率（考慮過期）</div>
-        </div>
-        <button onclick="suggestTotalDraws()" class="mt-2 px-5 py-2 bg-white/30 hover:bg-white/40 text-xs rounded-2xl transition-colors">
-          📊 根據目前樣本智能建議
-        </button>
-      </div>
-      <div id="poolDetail" class="text-xs opacity-90 leading-relaxed"></div>
-    </div>
     <div id="upperLimits" class="bg-blue-50 border border-blue-200 rounded-3xl p-6 mb-8 text-sm"></div>
     <div class="mt-12">
       <h3 class="font-semibold mb-4 text-slate-600">詳細交叉分析（進階參考）</h3>
@@ -206,8 +195,12 @@
       <h3 class="text-xl font-semibold mb-6">編輯抽獎記錄</h3>
       <select id="editDate" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg mb-4"></select>
       <select id="editPayment" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg mb-4"></select>
-      <select id="editPrize" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg"></select>
-      <div class="flex gap-4 mt-8">
+      <select id="editPrize" class="w-full border border-slate-300 rounded-2xl px-5 py-4 text-lg mb-4"></select>
+      <div class="flex items-center gap-3 mb-6">
+        <input type="checkbox" id="editUsed" class="w-5 h-5 accent-emerald-600">
+        <label for="editUsed" class="text-sm font-medium">已使用此電子優惠券</label>
+      </div>
+      <div class="flex gap-4">
         <button onclick="hideEditModal()" class="flex-1 py-4 border border-slate-300 rounded-2xl text-slate-600">取消</button>
         <button onclick="saveEdit()" class="flex-1 py-4 bg-emerald-600 text-white rounded-2xl">儲存修改</button>
       </div>
@@ -266,51 +259,6 @@
     async function refreshAllData() {
       if (currentUser) await loadPersonalRecords();
       await loadCrowdData();
-    }
-
-    function calculatePoolStats(estimatedDraws, usageRate) {
-      if (crowdData.length === 0) return { remaining: TOTAL_POOL, avg: 0, disbursed: 0 };
-      let totalPrize = 0;
-      crowdData.forEach(r => totalPrize += (r.prize || 0));
-      const avg = totalPrize / crowdData.length;
-      const effectiveDraws = estimatedDraws * (usageRate / 100);
-      const disbursed = avg * effectiveDraws;
-      const remaining = Math.max(0, TOTAL_POOL - disbursed);
-      return { remaining: Math.round(remaining), avg: avg.toFixed(1), disbursed: Math.round(disbursed) };
-    }
-
-    function suggestTotalDraws() {
-      const sampleCount = crowdData.length;
-      if (sampleCount === 0) {
-        document.getElementById('estimatedDraws').value = 400000;
-        alert('目前還沒有樣本數據，將使用活動初期合理起始值 400,000 筆');
-      } else {
-        const suggested = Math.round(sampleCount * 600);
-        document.getElementById('estimatedDraws').value = suggested;
-      }
-      renderRemainingPool();
-      alert(`已根據目前樣本數建議全澳總抽獎筆數：${document.getElementById('estimatedDraws').value} 筆（放大600倍）`);
-    }
-
-    function renderRemainingPool() {
-      let estimatedDraws = parseInt(document.getElementById('estimatedDraws').value);
-      if (!estimatedDraws || estimatedDraws <= 0) {
-        estimatedDraws = crowdData.length > 0 ? Math.round(crowdData.length * 600) : 400000;
-        document.getElementById('estimatedDraws').value = estimatedDraws;
-      }
-      const usageRate = parseFloat(document.getElementById('usageRate').value) || 88;
-      const stats = calculatePoolStats(estimatedDraws, usageRate);
-      document.getElementById('remainingAmount').textContent = `$${stats.remaining.toLocaleString()}`;
-      document.getElementById('poolDetail').innerHTML = `
-        <strong>官方推算方式（電子優惠券彩池）</strong><br>
-        主辦單位：澳門經濟及科技發展局與澳門中華總商會<br>
-        電子優惠券官方預算 P = 3.2億澳門元<br><br>
-        剩餘彩池 = P - 已核銷總額<br>
-        已核銷總額 = 已發放總值 × 使用率 R<br>
-        已發放總值 = 樣本平均中獎金額 × 預估全澳總抽獎筆數<br><br>
-        目前樣本平均：$${stats.avg}　•　已發放估計：$${stats.disbursed.toLocaleString()}<br>
-        <span class="opacity-75">※ 這是根據目前樣本數動態估計的全活動總量（目前樣本 × 600）。活動初期數字較小，後期會自動上升。</span>
-      `;
     }
 
     function showToast(msg) {
@@ -424,8 +372,6 @@
       renderDateChips();
       renderPaymentChips();
       renderPrizeCards();
-      document.getElementById('estimatedDraws').addEventListener('input', renderRemainingPool);
-      document.getElementById('usageRate').addEventListener('input', renderRemainingPool);
       loadCrowdData();
       switchTab(0);
       auth.onAuthStateChanged(user => {
@@ -454,7 +400,16 @@
         for (let prize of selectedPrizes) {
           const crowdRef = await db.collection('crowdRecords').add({ date: selectedDate, payment: selectedPayment, prize, week, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
           const linkId = crowdRef.id;
-          await db.collection('personalRecords').add({ uid: currentUser.uid, date: selectedDate, payment: selectedPayment, prize, week, linkId, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+          await db.collection('personalRecords').add({ 
+            uid: currentUser.uid, 
+            date: selectedDate, 
+            payment: selectedPayment, 
+            prize, 
+            week, 
+            linkId, 
+            used: prize > 0 ? false : null,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp() 
+          });
         }
         selectedPrizes = [];
         document.getElementById('selectionCounter').textContent = `已選 0 / 3`;
@@ -564,6 +519,7 @@
       renderWeeklyChart();
       renderHistoryList();
       renderRemainingReminder();
+      renderVoucherUsage();
     }
 
     function renderRemainingReminder() {
@@ -580,6 +536,40 @@
             <div class="text-2xl font-bold text-${color}-600">${used}/3</div>
             <div class="text-xs text-slate-500">剩餘 ${remaining} 次</div>
           </div>`;
+      });
+    }
+
+    function renderVoucherUsage() {
+      const container = document.getElementById('voucherUsageGrid');
+      container.innerHTML = '';
+      const currentWeek = getWeekNumber(dates[0]);
+      payments.forEach(pay => {
+        const weekRecords = personalRecords.filter(r => getWeekNumber(r.date) === currentWeek && r.payment === pay && r.prize > 0);
+        const won = weekRecords.length;
+        const used = weekRecords.filter(r => r.used === true).length;
+        const unused = won - used;
+        const card = document.createElement('div');
+        card.className = `voucher-card bg-white border border-slate-200 rounded-2xl p-5 flex justify-between items-center`;
+        card.innerHTML = `
+          <div>
+            <div class="font-medium text-sm text-slate-600">${pay.slice(0,8)}</div>
+            <div class="text-3xl font-bold text-emerald-600">${won}</div>
+            <div class="text-xs text-slate-500">本週獲得張數</div>
+          </div>
+          <div class="text-right">
+            <div class="flex items-center justify-end gap-4">
+              <div>
+                <div class="text-xs text-rose-600">已用</div>
+                <div class="text-2xl font-bold text-rose-600">${used}</div>
+              </div>
+              <div>
+                <div class="text-xs text-emerald-600">未用</div>
+                <div class="text-2xl font-bold text-emerald-600">${unused}</div>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
       });
     }
 
@@ -602,6 +592,18 @@
       }
     }
 
+    async function toggleVoucherUsed(id) {
+      const record = personalRecords.find(r => r.id === id);
+      if (!record || record.prize === 0) return;
+      const newUsed = !record.used;
+      try {
+        await db.collection('personalRecords').doc(id).update({ used: newUsed });
+        await refreshAllData();
+      } catch (e) {
+        alert('更新失敗：' + e.message);
+      }
+    }
+
     function showEditModal(id) {
       editingRecordId = id;
       const record = personalRecords.find(r => r.id === id);
@@ -611,6 +613,7 @@
       editPayment.innerHTML = payments.map(p => `<option value="${p}" ${p===record.payment?'selected':''}>${p}</option>`).join('');
       const editPrize = document.getElementById('editPrize');
       editPrize.innerHTML = prizes.map(p => `<option value="${p}" ${p===record.prize?'selected':''}>${p===0?'未中獎 (0元)':p+'元'}</option>`).join('');
+      document.getElementById('editUsed').checked = record.used === true;
       document.getElementById('editModal').style.display = 'flex';
     }
 
@@ -624,14 +627,15 @@
       const newDate = document.getElementById('editDate').value;
       const newPayment = document.getElementById('editPayment').value;
       const newPrize = parseInt(document.getElementById('editPrize').value);
+      const newUsed = document.getElementById('editUsed').checked;
       try {
         if (record && record.linkId) {
           const batch = db.batch();
-          batch.update(db.collection('personalRecords').doc(editingRecordId), { date: newDate, payment: newPayment, prize: newPrize });
+          batch.update(db.collection('personalRecords').doc(editingRecordId), { date: newDate, payment: newPayment, prize: newPrize, used: newPrize > 0 ? newUsed : null });
           batch.update(db.collection('crowdRecords').doc(record.linkId), { date: newDate, payment: newPayment, prize: newPrize });
           await batch.commit();
         } else {
-          await db.collection('personalRecords').doc(editingRecordId).update({ date: newDate, payment: newPayment, prize: newPrize });
+          await db.collection('personalRecords').doc(editingRecordId).update({ date: newDate, payment: newPayment, prize: newPrize, used: newPrize > 0 ? newUsed : null });
         }
         hideEditModal();
         await refreshAllData();
@@ -641,7 +645,6 @@
       }
     }
 
-    // ============== 新增：交叉分析數據計算與洞察 ==============
     function getPaymentStats() {
       const stats = {};
       payments.forEach(p => {
@@ -765,7 +768,6 @@
         chartDataKey = 'amount';
       }
 
-      // 洞察卡片
       let insightHTML = `
         <div class="insight-card">
           <h4>🔍 關鍵洞察 — ${title}</h4>
@@ -775,7 +777,6 @@
         </div>
       `;
 
-      // 表格
       let tableHTML = `<div class="overflow-x-auto mb-6"><table class="data-table w-full text-sm border-collapse bg-white rounded-2xl overflow-hidden">`;
       if (tab === 0) {
         tableHTML += `<thead class="bg-slate-100"><tr><th>支付系統</th><th>使用次數</th><th>佔比</th><th>總金額</th><th>中獎率</th><th>平均每筆</th></tr></thead><tbody>`;
@@ -798,7 +799,6 @@
       }
       tableHTML += `</tbody></table></div>`;
 
-      // 水平長條圖
       let chartHTML = `
         <div class="chart-container horizontal-bar">
           <canvas id="crossInsightChart"></canvas>
@@ -807,7 +807,6 @@
 
       container.innerHTML = insightHTML + tableHTML + chartHTML;
 
-      // 渲染水平長條圖
       setTimeout(() => {
         const ctx = document.getElementById('crossInsightChart');
         if (!ctx) return;
@@ -920,7 +919,6 @@
           }
         }
       });
-      renderRemainingPool();
       document.getElementById('upperLimits').innerHTML = `
         <div class="flex items-start gap-3">
           <span class="text-2xl">📌</span>
@@ -943,18 +941,28 @@
 
     function renderHistoryList() {
       const container = document.getElementById('historyList');
-      container.innerHTML = personalRecords.map(r => `
-        <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
-          <div>
-            <div class="font-medium">${formatMyRecordDate(r.date)}</div>
-            <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
+      container.innerHTML = personalRecords.map(r => {
+        let voucherHTML = '';
+        if (r.prize > 0) {
+          const status = r.used === true ? 
+            `<span onclick="toggleVoucherUsed('${r.id}')" class="px-4 py-1 bg-rose-100 text-rose-700 text-xs rounded-2xl cursor-pointer">已使用</span>` : 
+            `<span onclick="toggleVoucherUsed('${r.id}')" class="px-4 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-2xl cursor-pointer">未使用</span>`;
+          voucherHTML = `<div class="mt-2">${status}</div>`;
+        }
+        return `
+          <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
+            <div>
+              <div class="font-medium">${formatMyRecordDate(r.date)}</div>
+              <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
+              ${voucherHTML}
+            </div>
+            <div class="flex gap-2">
+              <button onclick="showEditModal('${r.id}')" class="px-5 py-2 text-emerald-600 border border-emerald-200 rounded-2xl text-sm">修改</button>
+              <button onclick="deleteRecord('${r.id}')" class="px-5 py-2 text-rose-600 border border-rose-200 rounded-2xl text-sm">刪除</button>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <button onclick="showEditModal('${r.id}')" class="px-5 py-2 text-emerald-600 border border-emerald-200 rounded-2xl text-sm">修改</button>
-            <button onclick="deleteRecord('${r.id}')" class="px-5 py-2 text-rose-600 border border-rose-200 rounded-2xl text-sm">刪除</button>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function switchTab(n) {
