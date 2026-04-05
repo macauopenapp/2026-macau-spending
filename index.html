@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2026 社區消費大獎賞 📊個人抽獎紀錄 & 全澳熱門趨勢</title>
+  <title>2026 社區消費大獎賞統計輔助工具 📊個人抽獎紀錄 & 全澳抽獎趨勢</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -65,8 +65,8 @@
   <!-- Header -->
   <div class="bg-white border-b sticky top-0 z-50 px-5 py-4 flex justify-between items-center shadow-sm">
     <div>
-      <h1 class="text-3xl font-bold text-emerald-700">2026 社區消費大獎賞</h1>
-      <p class="text-lg font-semibold text-slate-700">📊 個人抽獎紀錄 & 全澳熱門趨勢</p>
+      <h1 class="text-3xl font-bold text-emerald-700">2026 社區消費大獎賞統計輔助工具</h1>
+      <p class="text-lg font-semibold text-slate-700">📊 個人抽獎紀錄 & 全澳抽獎趨勢</p>
     </div>
     <div onclick="googleLogin()" id="loginBtn" class="cursor-pointer flex items-center gap-3 bg-white border border-slate-200 px-5 py-2 rounded-3xl shadow-sm">
       <div class="w-8 h-8 bg-emerald-100 rounded-2xl flex items-center justify-center text-xl">👤</div>
@@ -83,7 +83,7 @@
   <div class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white border-t z-50 flex">
     <button onclick="switchTab(0)" id="tab0" class="flex-1 py-4 text-emerald-600 font-semibold border-b-4 border-emerald-600 flex flex-col items-center gap-1 text-sm">📝 快速記錄</button>
     <button onclick="switchTab(1)" id="tab1" class="flex-1 py-4 flex flex-col items-center gap-1 text-sm text-slate-500">📊 我的抽獎紀錄</button>
-    <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4 flex flex-col items-center gap-1 text-sm text-slate-500">🌍 全澳熱門趨勢</button>
+    <button onclick="switchTab(2)" id="tab2" class="flex-1 py-4 flex flex-col items-center gap-1 text-sm text-slate-500">🌍 全澳抽獎趨勢</button>
   </div>
 
   <!-- Floating Action Button -->
@@ -118,7 +118,7 @@
         <div id="previewContent" class="flex justify-between text-base font-medium"></div>
       </div>
     </div>
-    <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存並貢獻全澳熱門趨勢</button>
+    <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存並貢獻全澳抽獎趨勢</button>
   </div>
 
   <!-- Page 1: 我的抽獎紀錄 -->
@@ -161,12 +161,12 @@
     </div>
   </div>
 
-  <!-- Page 2: 全澳熱門趨勢 -->
+  <!-- Page 2: 全澳抽獎趨勢 -->
   <div id="page2" class="p-5 hidden">
     <div id="dataLimitWarning" class="warning-banner rounded-3xl p-4 mb-6 text-sm flex items-center gap-3 hidden">
       ⚠️ <strong>目前僅載入最近 10,000 筆全澳數據</strong>（活動預估總量約 10 萬筆）。統計結果為近似值。
     </div>
-    <h2 class="text-2xl font-bold mb-6">全澳熱門趨勢</h2>
+    <h2 class="text-2xl font-bold mb-6">全澳抽獎趨勢</h2>
     <div id="coreStatsCard" class="highlight-card rounded-3xl p-8 mb-8 text-center text-white">
       <div class="grid grid-cols-3 gap-6">
         <div><div class="text-xs opacity-90 mb-1">全澳總樣本</div><div id="totalSamplesBig" class="text-4xl font-bold"></div></div>
@@ -217,7 +217,7 @@
 
   <!-- Footer -->
   <footer class="fixed bottom-10 left-0 right-0 max-w-2xl mx-auto bg-white border-t text-center text-xs text-slate-500 py-4">
-    © 2026 社區消費大獎賞 All Rights Reserved.<br>
+    © 2026 社區消費大獎賞統計輔助工具 All Rights Reserved.<br>
     隱私權聲明：本App僅收集匿名抽獎數據用於全澳統計分析，絕不作其他用途。
   </footer>
 
@@ -427,7 +427,7 @@
         }
         selectedPrizes = [];
         document.getElementById('selectionCounter').textContent = `已選 0 / 3`;
-        showToast('✅ 已成功儲存並貢獻全澳熱門趨勢！');
+        showToast('✅ 已成功儲存並貢獻全澳抽獎趨勢！');
         triggerConfetti();
         await refreshAllData();
         switchTab(1);
@@ -435,7 +435,7 @@
         alert('儲存失敗：' + e.message); 
       } finally {
         btn.disabled = false; 
-        btn.textContent = '💾 儲存並貢獻全澳熱門趨勢';
+        btn.textContent = '💾 儲存並貢獻全澳抽獎趨勢';
       }
     }
 
@@ -671,7 +671,7 @@
     }
 
     async function deleteRecord(id) {
-      if (!confirm('確定要刪除這筆抽獎紀錄嗎？\n\n此操作會同時從「全澳熱門趨勢」中移除對應數據，無法復原。')) return;
+      if (!confirm('確定要刪除這筆抽獎紀錄嗎？\n\n此操作會同時從「全澳抽獎趨勢」中移除對應數據，無法復原。')) return;
       const record = personalRecords.find(r => r.id === id);
       try {
         if (record && record.linkId) {
@@ -683,7 +683,7 @@
           await db.collection('personalRecords').doc(id).delete();
         }
         await refreshAllData();
-        showToast('✅ 已刪除紀錄並同步全澳熱門趨勢');
+        showToast('✅ 已刪除紀錄並同步全澳抽獎趨勢');
       } catch (e) { 
         alert('刪除失敗：' + e.message); 
       }
@@ -761,7 +761,7 @@
         }
         hideEditModal();
         await refreshAllData();
-        showToast('✅ 已成功更新紀錄並同步全澳熱門趨勢！');
+        showToast('✅ 已成功更新紀錄並同步全澳抽獎趨勢！');
       } catch (e) { 
         alert('更新失敗：' + e.message); 
       }
