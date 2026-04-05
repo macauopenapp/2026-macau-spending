@@ -855,9 +855,9 @@
       const top = stats[0];
       const second = stats[1];
       return [
-        `🔥 <strong>${top.name}</strong> 是最受歡迎支付系統（佔比 ${top.percent}%）`,
-        `💰 第二名 ${second.name} 貢獻 ${second.percent}% 使用量`,
-        `📈 建議：優先使用 ${top.name} 跟隨全澳趨勢，可提高中獎曝光率`
+        `🔥 <strong>${top.name}</strong> 是最受歡迎支付錢包（佔比 ${top.percent}%）`,
+        `💰 第二名 ${second.name} 佔 ${second.percent}% 使用量`,
+        `📈 建議：優先使用 ${top.name} 跟隨全澳趨勢，可提高中獎率`
       ];
     }
 
@@ -867,8 +867,7 @@
       const noWin = stats.find(s => s.name === '未中獎');
       return [
         `🎯 最常中獎面額是 <strong>${topPrize.name}</strong>（佔比 ${topPrize.percent}%）`,
-        `📉 未中獎率 ${noWin ? noWin.percent : '0'}% — 小額面額更穩健`,
-        `📌 建議：均衡選擇 10-50 元面額，可平衡風險與回報`
+        `📉 未中獎率 ${noWin ? noWin.percent : '0'}% `
       ];
     }
 
@@ -876,9 +875,9 @@
       if (crowdData.length === 0) return ["📊 目前全澳數據不足，請等待更多用戶貢獻"];
       const top = stats[0];
       return [
-        `💵 <strong>${top.name}</strong> 貢獻最高金額（佔總額 ${top.percent}%）`,
-        `📊 平均每筆貢獻 ${top.avgPerDraw} 元 — 性價比最高`,
-        `🚀 建議：多用 ${top.name} 可加速全澳彩池消耗，增加個人中獎機會`
+        `💵 <strong>${top.name}</strong> 派發最多金額（佔總額 ${top.percent}%）`,
+        `📊 平均每筆派發 ${top.avgPerDraw} 元 — 派發金額最高`,
+        `🚀 建議：多用 ${top.name} ，或可增加個人中獎金額`
       ];
     }
 
@@ -907,10 +906,10 @@
         chartLabel = '出現次數';
         chartDataKey = 'count';
       } else {
-        title = '金額貢獻統計';
+        title = '派發金額統計';
         stats = getAmountContributionStats();
         insights = generateAmountInsights(stats);
-        chartLabel = '貢獻金額 (元)';
+        chartLabel = '派發金額 (元)';
         chartDataKey = 'amount';
       }
 
@@ -937,7 +936,7 @@
           tableHTML += `<tr class="${rankClass}"><td class="font-medium text-left">${s.name}</td><td>${s.count}</td><td class="percent-cell">${s.percent}%</td><td>${s.avgWeekly}</td></tr>`;
         });
       } else {
-        tableHTML += `<thead class="bg-slate-100"><tr><th>支付系統</th><th>貢獻金額</th><th>佔總額</th><th>平均每筆</th></tr></thead><tbody>`;
+        tableHTML += `<thead class="bg-slate-100"><tr><th>支付系統</th><th>派發金額</th><th>佔總額</th><th>平均每筆</th></tr></thead><tbody>`;
         stats.forEach((s, i) => {
           const rankClass = i === 0 ? 'rank-1' : '';
           tableHTML += `<tr class="${rankClass}"><td class="font-medium text-left">${s.name}</td><td>$${s.amount.toLocaleString()}</td><td class="percent-cell">${s.percent}%</td><td>$${s.avgPerDraw}</td></tr>`;
