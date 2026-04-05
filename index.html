@@ -132,7 +132,7 @@
       <div id="remainingGrid" class="grid grid-cols-2 gap-3"></div>
     </div>
 
-    <!-- 電子優惠券使用情況（已優化為單張獨立標記） -->
+    <!-- 電子優惠券使用情況（單張獨立標記） -->
     <div id="voucherUsageSection" class="mt-8 bg-white rounded-3xl p-6 border border-emerald-100">
       <h3 class="font-semibold mb-4 flex items-center gap-2 text-emerald-700">🎟️ <span id="voucherWeekLabel"></span> 可核銷電子優惠券（周一～周四）</h3>
       <div id="voucherUsageGrid" class="grid grid-cols-1 gap-5"></div>
@@ -562,7 +562,6 @@
       });
     }
 
-    // ============== 優化後的電子優惠券使用情況（單張獨立標記） ==============
     function renderVoucherUsage() {
       const container = document.getElementById('voucherUsageGrid');
       const weekLabel = document.getElementById('voucherWeekLabel');
@@ -677,7 +676,7 @@
           await db.collection('personalRecords').doc(id).delete();
         }
         await refreshAllData();
-        alert('✅ 已刪除記錄並同步全澳運勢');
+        showToast('✅ 已刪除記錄並同步全澳運勢');
       } catch (e) { 
         alert('刪除失敗：' + e.message); 
       }
@@ -712,25 +711,56 @@
       document.getElementById('editModal').style.display = 'none';
     }
 
+    // ============== 修正後的 saveEdit（解決 BUG：week 同步 + used 狀態智能處理） ==============
     async function saveEdit() {
       if (!editingRecordId) return;
       const record = personalRecords.find(r => r.id === editingRecordId);
       const newDate = document.getElementById('editDate').value;
       const newPayment = document.getElementById('editPayment').value;
       const newPrize = parseInt(document.getElementById('editPrize').value);
-      const newUsed = document.getElementById('editUsed').checked;
+      const checkboxUsed = document.getElementById('editUsed').checked;
+
+      // 智能處理 used 狀態
+      let finalUsed = null;
+      if (newPrize > 0) {
+        finalUsed = checkboxUsed;
+      } else {
+        finalUsed = null; // 0元時強制清除 used
+      }
+
+      const newWeek = getWeekNumber(newDate);
+
       try {
         if (record && record.linkId) {
           const batch = db.batch();
-          batch.update(db.collection('personalRecords').doc(editingRecordId), { date: newDate, payment: newPayment, prize: newPrize, used: newPrize > 0 ? newUsed : null });
-          batch.update(db.collection('crowdRecords').doc(record.linkId), { date: newDate, payment: newPayment, prize: newPrize });
+          // personal 更新（含 used 與 week）
+          batch.update(db.collection('personalRecords').doc(editingRecordId), { 
+            date: newDate, 
+            payment: newPayment, 
+            prize: newPrize, 
+            week: newWeek, 
+            used: finalUsed 
+          });
+          // crowdRecords 更新（不含 used）
+          batch.update(db.collection('crowdRecords').doc(record.linkId), { 
+            date: newDate, 
+            payment: newPayment, 
+            prize: newPrize, 
+            week: newWeek 
+          });
           await batch.commit();
         } else {
-          await db.collection('personalRecords').doc(editingRecordId).update({ date: newDate, payment: newPayment, prize: newPrize, used: newPrize > 0 ? newUsed : null });
+          await db.collection('personalRecords').doc(editingRecordId).update({ 
+            date: newDate, 
+            payment: newPayment, 
+            prize: newPrize, 
+            week: newWeek, 
+            used: finalUsed 
+          });
         }
         hideEditModal();
         await refreshAllData();
-        alert('✅ 已成功更新記錄並同步全澳運勢！');
+        showToast('✅ 已成功更新記錄並同步全澳運勢！');
       } catch (e) { 
         alert('更新失敗：' + e.message); 
       }
