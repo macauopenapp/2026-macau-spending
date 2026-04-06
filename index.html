@@ -66,14 +66,52 @@
     .view-count { transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1); }
     .personal-tab-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); padding: 14px 0; }
     .personal-tab-btn.active { border-bottom: 4px solid #10b981; color: #10b981; font-weight: 700; }
+
+    /* 優化後的收藏按鈕 UI 設計 */
     .install-btn {
-      background: linear-gradient(135deg, #10b981, #14b8a6);
+      background: linear-gradient(135deg, #10b981, #34d399, #14b8a6);
       color: white;
-      transition: all 0.2s;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      box-shadow: 0 10px 25px -5px rgb(16 185 129 / 0.45),
+                  0 4px 10px -2px rgb(52 211 153 / 0.3);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .install-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 0 4px rgba(16,185,129,0.3);
+      transform: scale(1.08) translateY(-1px);
+      box-shadow: 0 15px 30px -5px rgb(16 185 129 / 0.55),
+                  0 6px 15px -3px rgb(52 211 153 / 0.4);
+    }
+    .install-btn:active {
+      transform: scale(0.95);
+    }
+    .install-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      transform: translateX(-150%);
+      animation: shimmer 4s infinite;
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-150%); }
+      20% { transform: translateX(250%); }
+      100% { transform: translateX(250%); }
+    }
+    @keyframes gentlePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    .install-btn.pulse {
+      animation: gentlePulse 2.5s ease-in-out infinite;
     }
   </style>
 </head>
@@ -86,9 +124,11 @@
         <h1 class="text-2xl font-bold text-emerald-700 leading-none tracking-tighter">2026社區消費大獎賞</h1>
         <h1 class="text-2xl font-bold text-emerald-700 leading-none tracking-tighter mt-1">抽獎統計輔助工具</h1>
       </div>
-      <div class="flex items-center gap-2">
-        <button onclick="showInstallModal()" class="install-btn flex items-center gap-2 px-5 py-2 rounded-2xl shadow-sm text-sm font-medium">
-          📱 加入主畫面
+      <div class="flex items-center gap-3">
+        <!-- 優化後的收藏按鈕（商業級 UI） -->
+        <button onclick="showInstallModal()" id="installBtn" class="install-btn">
+          <span class="text-2xl">📱</span>
+          <span>加到桌面</span>
         </button>
         <div onclick="googleLogin()" id="loginBtn" class="cursor-pointer flex items-center gap-1 bg-white border border-slate-200 px-3 py-2 rounded-2xl shadow-sm flex-shrink-0">
           <div class="w-6 h-6 bg-emerald-100 rounded-1xl flex items-center justify-center text-sm">👤</div>
@@ -209,7 +249,6 @@
       </div>
     </div>
 
-    <!-- 200元卡片 -->
     <div id="rare200Card" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-3xl p-6 mb-8 text-center">
       <div class="text-sm opacity-90">200元面額</div>
       <div id="twoHundredRateBig" class="text-5xl font-bold tracking-tighter">0.00%</div>
@@ -260,7 +299,7 @@
   <!-- 安裝引導 Modal -->
   <div id="installModal" class="modal">
     <div class="modal-content bg-white max-w-md w-full rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
-      <h3 class="text-xl font-semibold mb-2 text-center">📱 加入主畫面</h3>
+      <h3 class="text-xl font-semibold mb-2 text-center">📱 加到桌面</h3>
       <p class="text-sm text-slate-500 text-center mb-6">把這個抽獎統計工具加入手機桌面，像原生App一樣快速開啟！</p>
       
       <div class="flex border-b mb-6">
@@ -275,7 +314,7 @@
           <div class="space-y-4 text-sm">
             <div class="flex gap-4">
               <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">1</div>
-              <div>點擊上方「📱 加入主畫面」按鈕</div>
+              <div>點擊右上角「加到桌面」按鈕</div>
             </div>
             <div class="flex gap-4">
               <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">2</div>
@@ -505,6 +544,14 @@
       updatePreview();
       incrementPageViews();
       registerPWA();
+      // 首次載入時為收藏按鈕加上 pulse 動畫 3 秒後停止
+      setTimeout(() => {
+        const btn = document.getElementById('installBtn');
+        if (btn) btn.classList.add('pulse');
+        setTimeout(() => {
+          if (btn) btn.classList.remove('pulse');
+        }, 3200);
+      }, 800);
     }
 
     async function googleLogin() {
@@ -1261,7 +1308,6 @@
 
     // ============== PWA 安裝功能 ==============
     function registerPWA() {
-      // Service Worker 註冊（單檔版）
       if ('serviceWorker' in navigator) {
         const swScript = `
           self.addEventListener('install', () => self.skipWaiting());
@@ -1272,17 +1318,15 @@
         navigator.serviceWorker.register(swUrl).catch(() => {});
       }
 
-      // 監聽安裝提示事件
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
       });
 
-      // 第一次進入自動提示一次
       if (!localStorage.getItem('installPromptShown')) {
         setTimeout(() => {
           if (deferredPrompt) {
-            showToast('💡 喜歡這個工具嗎？點擊右上角「📱 加入主畫面」即可放在手機桌面！');
+            showToast('💡 喜歡這個工具嗎？點擊右上角「加到桌面」即可放在手機桌面！');
             localStorage.setItem('installPromptShown', 'true');
           }
         }, 2500);
