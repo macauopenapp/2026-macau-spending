@@ -61,12 +61,11 @@
     .view-count { transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1); }
     .personal-tab-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); padding: 14px 0; }
     .personal-tab-btn.active { border-bottom: 4px solid #10b981; color: #10b981; font-weight: 700; }
-    .my-tab-content { transition: all 0.3s ease; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
 
-  <!-- Header - 重新設計：加大垂直間距、使用更清晰階層標題 + 優化字體大小與 tracking，讓手機畫面不會過度擠逼或斷行 -->
+  <!-- Header -->
   <div class="bg-white border-b sticky top-0 z-50 px-5 py-5 shadow-sm">
     <div class="flex justify-between items-start">
       <div>
@@ -91,7 +90,7 @@
     🔒您的資料僅作抽獎統計分析，不作商業用途或外洩您的資料。
   </div>
 
-  <!-- 新增：瀏覽次數統計與意見反饋 Banner -->
+  <!-- 意見反饋 Banner -->
   <div class="px-5 py-3 bg-amber-50 text-xs text-amber-700 flex flex-col gap-1 border-b">
     <div>💡歡迎提供意見：<a href="mailto:macauopenapp@gmail.com" class="underline font-medium">macauopenapp@gmail.com</a></div>
   </div>
@@ -138,18 +137,18 @@
     <button onclick="saveAndContribute()" id="mainBtn" class="mt-8 w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-7 rounded-3xl text-xl font-bold shadow-2xl active:scale-95 transition-all">💾 儲存上載至全澳抽獎趨勢</button>
   </div>
 
-  <!-- Page 1：我的抽獎紀錄（已整合 TAB + 調整整體中獎率為「200元大獎率」 + 新增個人各面額機率表格） -->
+  <!-- Page 1：我的抽獎紀錄 -->
   <div id="page1" class="p-5 hidden">
     <h2 class="text-2xl font-bold mb-6">我的抽獎紀錄</h2>
-    <div id="myStats" class="grid grid-cols-3 gap-4"></div>
+    <div id="myStats" class="grid grid-cols-2 gap-4"></div>
 
-    <!-- 新增：個人各面額中獎機率表格（直接滿足用戶對各面額機率的興趣，尤其是200元） -->
+    <!-- 個人各面額中獎機率 -->
     <div class="mt-8 bg-white rounded-3xl p-6 border border-emerald-100">
-      <h3 class="font-semibold mb-3 flex items-center gap-2 text-emerald-700">🎯 個人各面額中獎機率（重點關注200元）</h3>
+      <h3 class="font-semibold mb-3 flex items-center gap-2 text-emerald-700">🎯 個人各面額中獎機率</h3>
       <div id="personalPrizeProb" class="overflow-x-auto rounded-2xl"></div>
     </div>
 
-    <!-- TAB 整合：本週機會 / 可核銷優惠券 / 歷史紀錄 -->
+    <!-- TAB 整合 -->
     <div class="mt-8 bg-white rounded-3xl shadow-sm overflow-hidden">
       <div class="flex border-b">
         <button onclick="switchMyTab(0)" id="myTabBtn0" class="personal-tab-btn active flex-1 py-4 text-center text-sm">📅 本週機會</button>
@@ -157,22 +156,12 @@
         <button onclick="switchMyTab(2)" id="myTabBtn2" class="personal-tab-btn flex-1 py-4 text-center text-sm">📜 歷史紀錄</button>
       </div>
       <div id="myTabContentWrapper" class="p-5">
-        <!-- Tab 0 內容（本週機會） -->
-        <div id="myTabContent0">
-          <div id="remainingReminder" class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6"></div>
-        </div>
-        <!-- Tab 1 內容（可核銷優惠券） -->
-        <div id="myTabContent1" class="hidden">
-          <div id="voucherUsageSection" class="bg-white rounded-3xl p-6 border border-emerald-100"></div>
-        </div>
-        <!-- Tab 2 內容（歷史紀錄） -->
-        <div id="myTabContent2" class="hidden">
-          <div id="historyList" class="space-y-3"></div>
-        </div>
+        <div id="myTabContent0"></div>
+        <div id="myTabContent1" class="hidden"></div>
+        <div id="myTabContent2" class="hidden"></div>
       </div>
     </div>
 
-    <!-- 圖表區（始終顯示，提供面額分布視覺化，補充各面額機率） -->
     <div class="mt-12">
       <h3 class="font-semibold mb-3">面額分布</h3>
       <div class="chart-container"><canvas id="myChart"></canvas></div>
@@ -187,7 +176,7 @@
     </div>
   </div>
 
-  <!-- Page 2：全澳抽獎趨勢（強化200元稀有面額顯示） -->
+  <!-- Page 2：全澳抽獎趨勢 -->
   <div id="page2" class="p-5 hidden">
     <div id="dataLimitWarning" class="warning-banner rounded-3xl p-4 mb-6 text-sm flex items-center gap-3 hidden">
       ⚠️ <strong>目前僅載入最近 10,000 筆全澳數據</strong>（活動預估總量約 10 萬筆）。統計結果為近似值。
@@ -201,11 +190,11 @@
       </div>
     </div>
 
-    <!-- 新增稀有200元高亮卡片（直接回應用戶對200元機率的關注） -->
-    <div id="rare200Card" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-3xl p-6 mb-8 hidden text-center">
-      <div class="text-sm opacity-90">🏆 稀有大獎</div>
+    <!-- 務實版 200元卡片 -->
+    <div id="rare200Card" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-3xl p-6 mb-8 text-center">
+      <div class="text-sm opacity-90">200元面額</div>
       <div id="twoHundredRateBig" class="text-5xl font-bold tracking-tighter">0.00%</div>
-      <div class="text-xs mt-1">全澳200元中獎機率（極稀有）</div>
+      <div class="text-xs mt-1">全澳中獎機率</div>
     </div>
 
     <div class="mb-10">
@@ -249,7 +238,7 @@
     </div>
   </div>
 
-  <!-- Footer - 已包含意見反饋 -->
+  <!-- Footer -->
   <footer class="fixed bottom-10 left-0 right-0 max-w-2xl mx-auto bg-white border-t text-center text-xs text-slate-500 py-4">
     © 2026 社區消費大獎賞抽獎統計輔助工具 All Rights Reserved.
   </footer>
@@ -550,20 +539,24 @@
       if (window.myChart && typeof window.myChart.destroy === 'function') window.myChart.destroy();
       const container = document.getElementById('myStats');
       if (personalRecords.length === 0) {
-        container.innerHTML = `<div class="col-span-3 empty-state"><div class="text-6xl mb-4">📭</div><p class="text-xl font-medium mb-2">還沒有抽獎紀錄</p><p class="text-sm text-slate-500 mb-6">快去記錄第一筆吧！</p><button onclick="switchTab(0)" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-sm font-medium">立即新增紀錄</button></div>`;
-        document.getElementById('remainingReminder').classList.add('hidden');
+        container.innerHTML = `<div class="col-span-2 empty-state"><div class="text-6xl mb-4">📭</div><p class="text-xl font-medium mb-2">還沒有抽獎紀錄</p><p class="text-sm text-slate-500 mb-6">快去記錄第一筆吧！</p><button onclick="switchTab(0)" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-sm font-medium">立即新增紀錄</button></div>`;
         return;
       }
-      document.getElementById('remainingReminder').classList.remove('hidden');
       const total = personalRecords.length;
       const totalPrize = personalRecords.reduce((sum, r) => sum + r.prize, 0);
+      const wins = personalRecords.filter(r => r.prize > 0).length;
+      const winRate = total ? ((wins / total) * 100).toFixed(1) : '0.0';
+      const avgPrize = total ? (totalPrize / total).toFixed(1) : '0.0';
       const twoHundredCount = personalRecords.filter(r => r.prize === 200).length;
       const rate200 = total ? ((twoHundredCount / total) * 100).toFixed(1) : '0.0';
+
       container.innerHTML = `
         <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-sky-600">${total}</div><div class="text-xs text-slate-500">總抽獎次數</div></div>
         <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-emerald-600">$${totalPrize}</div><div class="text-xs text-slate-500">總中獎金額</div></div>
-        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${rate200}%</div><div class="text-xs text-slate-500">200元大獎率</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-amber-600">${winRate}%</div><div class="text-xs text-slate-500">整體中獎率</div></div>
+        <div class="bg-white rounded-3xl p-5 text-center"><div class="text-4xl font-bold text-orange-600">$${avgPrize}</div><div class="text-xs text-slate-500">平均中獎金額</div></div>
       `;
+
       window.myChart = new Chart(document.getElementById('myChart'), { 
         type: 'bar', 
         data: { 
@@ -604,8 +597,7 @@
     }
 
     function renderRemainingReminder() {
-      const container = document.getElementById('remainingReminder');
-      const weekLabel = document.getElementById('remainingWeekLabel') || {textContent: ''};
+      const container = document.getElementById('myTabContent0');
       const currentWeek = getWeekNumber(dates[0]);
       let html = `<h3 class="font-semibold mb-3 flex items-center gap-2">🔄 第${currentWeek}週 抽獎機會</h3><div class="grid grid-cols-2 gap-3">`;
       payments.forEach(pay => {
@@ -632,8 +624,7 @@
     }
 
     function renderVoucherUsage() {
-      const container = document.getElementById('voucherUsageSection');
-      const weekLabel = document.getElementById('voucherWeekLabel') || {innerHTML: ''};
+      const container = document.getElementById('myTabContent1');
       const currentWeek = getWeekNumber(dates[0]);
       let html = `<h3 class="font-semibold mb-4 flex items-center gap-2 text-emerald-700">🎟️ 第${currentWeek}週 可核銷電子優惠券（周一至周四）</h3><div class="grid grid-cols-1 gap-5">`;
       payments.forEach(pay => {
@@ -702,6 +693,19 @@
       container.innerHTML = html;
     }
 
+    async function toggleVoucherUsed(id) {
+      if (!confirm('是否確定標記此電子優惠券為已核銷？此操作無法復原。')) return;
+      const record = personalRecords.find(r => r.id === id);
+      if (!record || record.prize === 0) return;
+      const newUsed = !record.used;
+      try {
+        await db.collection('personalRecords').doc(id).update({ used: newUsed });
+        await refreshAllData();
+      } catch (e) {
+        alert('更新失敗：' + e.message);
+      }
+    }
+
     async function toggleAllUsed(payment, week) {
       if (!confirm(`確定要把 ${payment} 第${week}週所有可核銷電子優惠券全部標記為「已核銷」嗎？`)) return;
       const toUpdate = personalRecords.filter(r => 
@@ -739,18 +743,6 @@
         showToast('✅ 已刪除紀錄並同步全澳抽獎趨勢');
       } catch (e) { 
         alert('刪除失敗：' + e.message); 
-      }
-    }
-
-    async function toggleVoucherUsed(id) {
-      const record = personalRecords.find(r => r.id === id);
-      if (!record || record.prize === 0) return;
-      const newUsed = !record.used;
-      try {
-        await db.collection('personalRecords').doc(id).update({ used: newUsed });
-        await refreshAllData();
-      } catch (e) {
-        alert('更新失敗：' + e.message);
       }
     }
 
@@ -1095,14 +1087,10 @@
           </div>
         </div>
       `;
-      // 新增200元稀有卡片
       const count200 = prizeCount[200];
       const rate200 = total ? ((count200 / total) * 100).toFixed(3) : '0.000';
-      const rareCard = document.getElementById('rare200Card');
-      if (rareCard) {
-        rareCard.classList.toggle('hidden', parseFloat(rate200) === 0);
-        document.getElementById('twoHundredRateBig').textContent = rate200 + '%';
-      }
+      document.getElementById('rare200Card').classList.toggle('hidden', parseFloat(rate200) === 0);
+      document.getElementById('twoHundredRateBig').textContent = rate200 + '%';
       renderCrossAnalysis(0);
     }
 
@@ -1112,7 +1100,7 @@
     }
 
     function renderHistoryList() {
-      const container = document.getElementById('historyList');
+      const container = document.getElementById('myTabContent2');
       container.innerHTML = personalRecords.map(r => {
         let voucherHTML = '';
         if (r.prize > 0) {
@@ -1122,15 +1110,15 @@
           voucherHTML = `<div class="mt-2">${status}</div>`;
         }
         return `
-          <div class="bg-white rounded-3xl p-5 flex justify-between items-center">
-            <div>
+          <div class="bg-white rounded-3xl p-6 flex justify-between items-center gap-6">
+            <div class="flex-1 min-w-0">
               <div class="font-medium">${formatMyRecordDate(r.date)}</div>
               <div class="text-sm text-slate-500">${r.payment} • ${r.prize}元</div>
               ${voucherHTML}
             </div>
-            <div class="flex gap-2">
-              <button onclick="showEditModal('${r.id}')" class="px-5 py-2 text-emerald-600 border border-emerald-200 rounded-2xl text-sm">修改</button>
-              <button onclick="deleteRecord('${r.id}')" class="px-5 py-2 text-rose-600 border border-rose-200 rounded-2xl text-sm">刪除</button>
+            <div class="flex gap-3 flex-shrink-0">
+              <button onclick="showEditModal('${r.id}')" class="px-6 py-3 text-emerald-600 border border-emerald-200 rounded-2xl text-sm font-medium">修改</button>
+              <button onclick="deleteRecord('${r.id}')" class="px-6 py-3 text-rose-600 border border-rose-200 rounded-2xl text-sm font-medium">刪除</button>
             </div>
           </div>
         `;
@@ -1159,10 +1147,8 @@
       });
     }
 
-    // ============== 優化後的網頁瀏覽統計次數函數 ==============
     async function incrementPageViews() {
       if (sessionStorage.getItem('pageViewCounted')) {
-        console.log('✅ 本會話已計數過瀏覽次數');
         return;
       }
       try {
@@ -1176,23 +1162,17 @@
         if (snap.exists) {
           const count = snap.data().count || 1;
           const formatted = count.toLocaleString('zh-HK');
-          const els = [document.getElementById('viewCount')];
-          els.forEach(el => {
-            if (el) {
-              el.style.transition = 'all 0.6s cubic-bezier(0.34,1.56,0.64,1)';
-              el.textContent = formatted;
-              el.classList.add('scale-125');
-              setTimeout(() => el.classList.remove('scale-125'), 800);
-            }
-          });
-          console.log('%c📊 瀏覽統計 +1 成功（目前累計 ' + formatted + ' 次）', 'color:#10b981;font-weight:700');
+          const el = document.getElementById('viewCount');
+          if (el) {
+            el.style.transition = 'all 0.6s cubic-bezier(0.34,1.56,0.64,1)';
+            el.textContent = formatted;
+            el.classList.add('scale-125');
+            setTimeout(() => el.classList.remove('scale-125'), 800);
+          }
         }
       } catch (e) {
-        console.error('瀏覽統計更新失敗（可能是開發階段或網路）：', e.message);
-        const els = [document.getElementById('viewCount')];
-        els.forEach(el => {
-          if (el) el.textContent = '12480';
-        });
+        const el = document.getElementById('viewCount');
+        if (el) el.textContent = '12480';
       }
     }
 
