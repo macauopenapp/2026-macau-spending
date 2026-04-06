@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>2026 社區消費大獎賞抽獎統計輔助工具 📊個人抽獎紀錄 & 全澳抽獎趨勢</title>
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="消費大獎賞">
+  <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiMjAyNiDmoaXkvZPmtqXlhbbmlbDmnaHlrZToiLCJzaG9ydF9uYW1lIjoi5rC45b6u5aSn5aWW6KqWIiwic3RhcnRfdXJsIjoiLi8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZjhmYWZjIiwidGhlbWVfY29sb3IiOiIjMTBiOTgxIiwiaWNvbnMiOlt7InNyYyI6Imh0dHBzOi8vdmlhLnBsYWNlaG9sZGVyLmNvbS8xOTJ4MTkyLzEwYjk4MS93aGl0ZT90ZXh0PeOAgOOCiSIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9wbmcifSx7InNyYyI6Imh0dHBzOi8vdmlhLnBsYWNlaG9sZGVyLmNvbS81MTJ4NTEyLzEwYjk4MS93aGl0ZT90ZXh0PeOAgOOCiSIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9wbmcifV19">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -61,6 +66,15 @@
     .view-count { transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1); }
     .personal-tab-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); padding: 14px 0; }
     .personal-tab-btn.active { border-bottom: 4px solid #10b981; color: #10b981; font-weight: 700; }
+    .install-btn {
+      background: linear-gradient(135deg, #10b981, #14b8a6);
+      color: white;
+      transition: all 0.2s;
+    }
+    .install-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 0 4px rgba(16,185,129,0.3);
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
@@ -72,9 +86,14 @@
         <h1 class="text-2xl font-bold text-emerald-700 leading-none tracking-tighter">2026社區消費大獎賞</h1>
         <h1 class="text-2xl font-bold text-emerald-700 leading-none tracking-tighter mt-1">抽獎統計輔助工具</h1>
       </div>
-      <div onclick="googleLogin()" id="loginBtn" class="cursor-pointer flex items-center gap-1 bg-white border border-slate-200 px-3 py-2 rounded-2xl shadow-sm flex-shrink-0">
-        <div class="w-6 h-6 bg-emerald-100 rounded-1xl flex items-center justify-center text-sm">👤</div>
-        <span id="userDisplay" class="font-medium text-sm">登入</span>
+      <div class="flex items-center gap-2">
+        <button onclick="showInstallModal()" class="install-btn flex items-center gap-2 px-5 py-2 rounded-2xl shadow-sm text-sm font-medium">
+          📱 加入主畫面
+        </button>
+        <div onclick="googleLogin()" id="loginBtn" class="cursor-pointer flex items-center gap-1 bg-white border border-slate-200 px-3 py-2 rounded-2xl shadow-sm flex-shrink-0">
+          <div class="w-6 h-6 bg-emerald-100 rounded-1xl flex items-center justify-center text-sm">👤</div>
+          <span id="userDisplay" class="font-medium text-sm">登入</span>
+        </div>
       </div>
     </div>
     <div class="mt-3 flex items-center justify-between">
@@ -190,7 +209,7 @@
       </div>
     </div>
 
-    <!-- 務實版 200元卡片 -->
+    <!-- 200元卡片 -->
     <div id="rare200Card" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-3xl p-6 mb-8 text-center">
       <div class="text-sm opacity-90">200元面額</div>
       <div id="twoHundredRateBig" class="text-5xl font-bold tracking-tighter">0.00%</div>
@@ -238,6 +257,68 @@
     </div>
   </div>
 
+  <!-- 安裝引導 Modal -->
+  <div id="installModal" class="modal">
+    <div class="modal-content bg-white max-w-md w-full rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
+      <h3 class="text-xl font-semibold mb-2 text-center">📱 加入主畫面</h3>
+      <p class="text-sm text-slate-500 text-center mb-6">把這個抽獎統計工具加入手機桌面，像原生App一樣快速開啟！</p>
+      
+      <div class="flex border-b mb-6">
+        <button onclick="switchInstallTab(0)" id="installTab0" class="flex-1 py-3 text-center font-medium border-b-2 border-emerald-600 text-emerald-600">Android / Chrome</button>
+        <button onclick="switchInstallTab(1)" id="installTab1" class="flex-1 py-3 text-center font-medium text-slate-500">iPhone / Safari</button>
+      </div>
+
+      <!-- Android 教學 -->
+      <div id="installContent0">
+        <div class="bg-emerald-50 rounded-3xl p-6 mb-6">
+          <div class="text-emerald-700 font-medium mb-3">📲 Android / Chrome 用戶</div>
+          <div class="space-y-4 text-sm">
+            <div class="flex gap-4">
+              <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">1</div>
+              <div>點擊上方「📱 加入主畫面」按鈕</div>
+            </div>
+            <div class="flex gap-4">
+              <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">2</div>
+              <div>在彈出視窗點擊「安裝」</div>
+            </div>
+            <div class="flex gap-4">
+              <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">3</div>
+              <div>完成後桌面就會出現捷徑</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- iOS 教學 -->
+      <div id="installContent1" class="hidden">
+        <div class="bg-emerald-50 rounded-3xl p-6 mb-6">
+          <div class="text-emerald-700 font-medium mb-3">🍎 iPhone / Safari 用戶</div>
+          <div class="space-y-4 text-sm">
+            <div class="flex gap-4">
+              <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">1</div>
+              <div>點擊 Safari 底部的「分享」按鈕</div>
+            </div>
+            <div class="flex gap-4">
+              <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">2</div>
+              <div>向下滑動找到「加入主畫面」</div>
+            </div>
+            <div class="flex gap-4">
+              <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">3</div>
+              <div>點擊「加入」即可完成</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-400 text-center mb-6">加入主畫面後，隨時隨地記錄抽獎，再也不用重新開網頁</div>
+
+      <div class="flex gap-3">
+        <button onclick="hideInstallModal()" class="flex-1 py-4 border border-slate-300 rounded-2xl text-slate-600">稍後再說</button>
+        <button onclick="hideInstallModal()" class="flex-1 py-4 bg-emerald-600 text-white rounded-2xl">我知道了</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="fixed bottom-10 left-0 right-0 max-w-2xl mx-auto bg-white border-t text-center text-xs text-slate-500 py-4">
     © 2026 社區消費大獎賞抽獎統計輔助工具 All Rights Reserved.
@@ -266,6 +347,7 @@
     let editingRecordId = null;
     let crossCharts = {};
     let currentMyTab = 0;
+    let deferredPrompt = null;
 
     const dates = ["2026-04-10 第1週 周五","2026-04-11 第1週 周六","2026-04-12 第1週 周日","2026-04-17 第2週 周五","2026-04-18 第2週 周六","2026-04-19 第2週 周日","2026-04-24 第3週 周五","2026-04-25 第3週 周六","2026-04-26 第3週 周日","2026-05-01 第4週 周五","2026-05-02 第4週 周六","2026-05-03 第4週 周日","2026-05-08 第5週 周五","2026-05-09 第5週 周六","2026-05-10 第5週 周日","2026-05-15 第6週 周五","2026-05-16 第6週 周六","2026-05-17 第6週 周日","2026-05-22 第7週 周五","2026-05-23 第7週 周六","2026-05-24 第7週 周日","2026-05-29 第8週 周五","2026-05-30 第8週 周六","2026-05-31 第8週 周日","2026-06-05 第9週 周五","2026-06-06 第9週 周六","2026-06-07 第9週 周日","2026-06-12 第10週 周五","2026-06-13 第10週 周六","2026-06-14 第10週 周日"];
     const payments = ["MPay澳門錢包","支付寶（澳門）","澳門中銀手機銀行","工銀e支付","豐付寶","廣發移動支付錢包","LusoPay","極易付澳門錢包/UePay"];
@@ -422,6 +504,7 @@
       });
       updatePreview();
       incrementPageViews();
+      registerPWA();
     }
 
     async function googleLogin() {
@@ -1174,6 +1257,66 @@
         const el = document.getElementById('viewCount');
         if (el) el.textContent = '12480';
       }
+    }
+
+    // ============== PWA 安裝功能 ==============
+    function registerPWA() {
+      // Service Worker 註冊（單檔版）
+      if ('serviceWorker' in navigator) {
+        const swScript = `
+          self.addEventListener('install', () => self.skipWaiting());
+          self.addEventListener('activate', () => self.clients.claim());
+        `;
+        const blob = new Blob([swScript], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(() => {});
+      }
+
+      // 監聽安裝提示事件
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+      });
+
+      // 第一次進入自動提示一次
+      if (!localStorage.getItem('installPromptShown')) {
+        setTimeout(() => {
+          if (deferredPrompt) {
+            showToast('💡 喜歡這個工具嗎？點擊右上角「📱 加入主畫面」即可放在手機桌面！');
+            localStorage.setItem('installPromptShown', 'true');
+          }
+        }, 2500);
+      }
+    }
+
+    function showInstallModal() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            showToast('🎉 已成功加入主畫面！');
+          }
+          deferredPrompt = null;
+        });
+      } else {
+        document.getElementById('installModal').style.display = 'flex';
+        switchInstallTab(0);
+      }
+    }
+
+    function hideInstallModal() {
+      document.getElementById('installModal').style.display = 'none';
+    }
+
+    function switchInstallTab(n) {
+      document.getElementById('installContent0').classList.toggle('hidden', n !== 0);
+      document.getElementById('installContent1').classList.toggle('hidden', n !== 1);
+      document.getElementById('installTab0').classList.toggle('border-b-2', n === 0);
+      document.getElementById('installTab0').classList.toggle('border-emerald-600', n === 0);
+      document.getElementById('installTab0').classList.toggle('text-emerald-600', n === 0);
+      document.getElementById('installTab1').classList.toggle('border-b-2', n === 1);
+      document.getElementById('installTab1').classList.toggle('border-emerald-600', n === 1);
+      document.getElementById('installTab1').classList.toggle('text-emerald-600', n === 1);
     }
 
     window.onload = init;
