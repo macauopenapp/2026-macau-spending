@@ -67,76 +67,75 @@
     .personal-tab-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); padding: 14px 0; }
     .personal-tab-btn.active { border-bottom: 4px solid #10b981; color: #10b981; font-weight: 700; }
 
-    /* 優化後的收藏按鈕 UI 設計 */
+    /* 全新優化版「加到桌面」按鈕（手機友好 + 絕不走位） */
     .install-btn {
-      background: linear-gradient(135deg, #10b981, #34d399, #14b8a6);
+      background: linear-gradient(135deg, #10b981, #34d399);
       color: white;
-      padding: 12px 24px;
+      padding: 16px 24px;
       border-radius: 9999px;
       font-size: 15px;
       font-weight: 700;
       letter-spacing: -0.02em;
-      box-shadow: 0 10px 25px -5px rgb(16 185 129 / 0.45),
-                  0 4px 10px -2px rgb(52 211 153 / 0.3);
+      box-shadow: 0 10px 25px -5px rgb(16 185 129 / 0.5);
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      position: relative;
-      overflow: hidden;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 10px;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
     }
     .install-btn:hover {
-      transform: scale(1.08) translateY(-1px);
-      box-shadow: 0 15px 30px -5px rgb(16 185 129 / 0.55),
-                  0 6px 15px -3px rgb(52 211 153 / 0.4);
+      transform: scale(1.03);
+      box-shadow: 0 15px 30px -5px rgb(16 185 129 / 0.6);
     }
     .install-btn:active {
-      transform: scale(0.95);
+      transform: scale(0.97);
     }
     .install-btn::before {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
-      transform: translateX(-150%);
-      animation: shimmer 4s infinite;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transform: translateX(-200%);
+      animation: shimmer 3s infinite;
     }
     @keyframes shimmer {
-      0% { transform: translateX(-150%); }
-      20% { transform: translateX(250%); }
-      100% { transform: translateX(250%); }
+      0% { transform: translateX(-200%); }
+      20% { transform: translateX(300%); }
+      100% { transform: translateX(300%); }
     }
-    @keyframes gentlePulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.04); }
-    }
-    .install-btn.pulse {
-      animation: gentlePulse 2.5s ease-in-out infinite;
+    .header-row2 {
+      margin-top: 12px;
     }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
 
-  <!-- Header -->
+  <!-- Header - 全新兩行布局（徹底解決手機走位） -->
   <div class="bg-white border-b sticky top-0 z-50 px-5 py-5 shadow-sm">
+    <!-- 第一行：標題 + 登入 -->
     <div class="flex justify-between items-start">
       <div>
         <h1 class="text-2xl font-bold text-emerald-700 leading-none tracking-tighter">2026社區消費大獎賞</h1>
         <h1 class="text-2xl font-bold text-emerald-700 leading-none tracking-tighter mt-1">抽獎統計輔助工具</h1>
       </div>
-      <div class="flex items-center gap-3">
-        <!-- 優化後的收藏按鈕（商業級 UI） -->
-        <button onclick="showInstallModal()" id="installBtn" class="install-btn">
-          <span class="text-2xl">📱</span>
-          <span>加到桌面</span>
-        </button>
-        <div onclick="googleLogin()" id="loginBtn" class="cursor-pointer flex items-center gap-1 bg-white border border-slate-200 px-3 py-2 rounded-2xl shadow-sm flex-shrink-0">
-          <div class="w-6 h-6 bg-emerald-100 rounded-1xl flex items-center justify-center text-sm">👤</div>
-          <span id="userDisplay" class="font-medium text-sm">登入</span>
-        </div>
+      <div onclick="googleLogin()" id="loginBtn" class="cursor-pointer flex items-center gap-1 bg-white border border-slate-200 px-3 py-2 rounded-2xl shadow-sm flex-shrink-0">
+        <div class="w-6 h-6 bg-emerald-100 rounded-1xl flex items-center justify-center text-sm">👤</div>
+        <span id="userDisplay" class="font-medium text-sm">登入</span>
       </div>
     </div>
-    <div class="mt-3 flex items-center justify-between">
+
+    <!-- 第二行：全寬「加到桌面」大按鈕（手機絕不走位） -->
+    <div class="header-row2">
+      <button onclick="showInstallModal()" id="installBtn" class="install-btn">
+        <span class="text-xl">📱</span>
+        <span>加到主畫面</span>
+      </button>
+    </div>
+
+    <div class="mt-4 flex items-center justify-between">
       <p class="text-sm font-semibold text-slate-700">📊 個人抽獎紀錄 & 全澳抽獎趨勢</p>
       <div class="flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-medium px-4 py-1 rounded-3xl">
         👥 <span id="viewCount" class="font-bold view-count">0</span>
@@ -201,13 +200,11 @@
     <h2 class="text-2xl font-bold mb-6">我的抽獎紀錄</h2>
     <div id="myStats" class="grid grid-cols-2 gap-4"></div>
 
-    <!-- 個人各面額中獎機率 -->
     <div class="mt-8 bg-white rounded-3xl p-6 border border-emerald-100">
       <h3 class="font-semibold mb-3 flex items-center gap-2 text-emerald-700">🎯 個人各面額中獎機率</h3>
       <div id="personalPrizeProb" class="overflow-x-auto rounded-2xl"></div>
     </div>
 
-    <!-- TAB 整合 -->
     <div class="mt-8 bg-white rounded-3xl shadow-sm overflow-hidden">
       <div class="flex border-b">
         <button onclick="switchMyTab(0)" id="myTabBtn0" class="personal-tab-btn active flex-1 py-4 text-center text-sm">📅 本週機會</button>
@@ -299,7 +296,7 @@
   <!-- 安裝引導 Modal -->
   <div id="installModal" class="modal">
     <div class="modal-content bg-white max-w-md w-full rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
-      <h3 class="text-xl font-semibold mb-2 text-center">📱 加到桌面</h3>
+      <h3 class="text-xl font-semibold mb-2 text-center">📱 加到主畫面</h3>
       <p class="text-sm text-slate-500 text-center mb-6">把這個抽獎統計工具加入手機桌面，像原生App一樣快速開啟！</p>
       
       <div class="flex border-b mb-6">
@@ -307,14 +304,13 @@
         <button onclick="switchInstallTab(1)" id="installTab1" class="flex-1 py-3 text-center font-medium text-slate-500">iPhone / Safari</button>
       </div>
 
-      <!-- Android 教學 -->
       <div id="installContent0">
         <div class="bg-emerald-50 rounded-3xl p-6 mb-6">
           <div class="text-emerald-700 font-medium mb-3">📲 Android / Chrome 用戶</div>
           <div class="space-y-4 text-sm">
             <div class="flex gap-4">
               <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">1</div>
-              <div>點擊右上角「加到桌面」按鈕</div>
+              <div>點擊上方「加到主畫面」按鈕</div>
             </div>
             <div class="flex gap-4">
               <div class="w-8 h-8 rounded-2xl bg-white shadow flex items-center justify-center flex-shrink-0">2</div>
@@ -328,7 +324,6 @@
         </div>
       </div>
 
-      <!-- iOS 教學 -->
       <div id="installContent1" class="hidden">
         <div class="bg-emerald-50 rounded-3xl p-6 mb-6">
           <div class="text-emerald-700 font-medium mb-3">🍎 iPhone / Safari 用戶</div>
@@ -544,14 +539,6 @@
       updatePreview();
       incrementPageViews();
       registerPWA();
-      // 首次載入時為收藏按鈕加上 pulse 動畫 3 秒後停止
-      setTimeout(() => {
-        const btn = document.getElementById('installBtn');
-        if (btn) btn.classList.add('pulse');
-        setTimeout(() => {
-          if (btn) btn.classList.remove('pulse');
-        }, 3200);
-      }, 800);
     }
 
     async function googleLogin() {
@@ -1278,9 +1265,7 @@
     }
 
     async function incrementPageViews() {
-      if (sessionStorage.getItem('pageViewCounted')) {
-        return;
-      }
+      if (sessionStorage.getItem('pageViewCounted')) return;
       try {
         const statsRef = db.collection('stats').doc('pageViews');
         await statsRef.set({ 
@@ -1306,13 +1291,10 @@
       }
     }
 
-    // ============== PWA 安裝功能 ==============
+    // ============== PWA 安裝功能（大幅強化） ==============
     function registerPWA() {
       if ('serviceWorker' in navigator) {
-        const swScript = `
-          self.addEventListener('install', () => self.skipWaiting());
-          self.addEventListener('activate', () => self.clients.claim());
-        `;
+        const swScript = `self.addEventListener('install', () => self.skipWaiting()); self.addEventListener('activate', () => self.clients.claim());`;
         const blob = new Blob([swScript], { type: 'application/javascript' });
         const swUrl = URL.createObjectURL(blob);
         navigator.serviceWorker.register(swUrl).catch(() => {});
@@ -1325,15 +1307,14 @@
 
       if (!localStorage.getItem('installPromptShown')) {
         setTimeout(() => {
-          if (deferredPrompt) {
-            showToast('💡 喜歡這個工具嗎？點擊右上角「加到桌面」即可放在手機桌面！');
-            localStorage.setItem('installPromptShown', 'true');
-          }
-        }, 2500);
+          showToast('💡 喜歡這個工具嗎？點擊上方「加到主畫面」即可放在手機桌面！');
+          localStorage.setItem('installPromptShown', 'true');
+        }, 1800);
       }
     }
 
     function showInstallModal() {
+      // 優先使用原生安裝提示（最流暢）
       if (deferredPrompt) {
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then((choiceResult) => {
@@ -1342,10 +1323,11 @@
           }
           deferredPrompt = null;
         });
-      } else {
-        document.getElementById('installModal').style.display = 'flex';
-        switchInstallTab(0);
+        return;
       }
+      // 無原生提示時顯示教學 Modal
+      document.getElementById('installModal').style.display = 'flex';
+      switchInstallTab(0);
     }
 
     function hideInstallModal() {
